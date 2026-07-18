@@ -21,7 +21,8 @@ from . import config
 
 SAMPLE_RATE = 16_000
 RECORD_SECONDS = 5
-WHISPER_MODEL = os.environ.get("ALFRED_WHISPER", "base")
+WHISPER_MODEL = os.environ.get("ALFRED_WHISPER", "small")
+CONFIRM_SECONDS = 3.5
 
 # The butler's voice: a local Piper model (British, JARVIS-adjacent) when
 # present, Windows SAPI otherwise. ALFRED_TTS=sapi forces the fallback.
@@ -105,3 +106,19 @@ def record(seconds: float = RECORD_SECONDS):
 def is_stop(transcript: str) -> bool:
     words = re.sub(r"[^a-z ]", "", transcript.lower()).split()
     return "stop" in words and (len(words) <= 3 or "alfred" in words)
+
+
+def is_yes(transcript: str) -> bool:
+    """A spoken confirmation. Anything negative wins over anything positive —
+    a mishear must never confirm itself."""
+    text = re.sub(r"[^a-z ]", "", transcript.lower())
+    words = set(text.split())
+    if words & {"no", "not", "dont", "stop", "negative", "cancel", "belay", "never"}:
+        return False
+    return bool(words & {"yes", "yeah", "confirm", "proceed", "aye", "engage"}) \
+        or "go ahead" in text or "do it" in text
+
+
+def heard_confirmation() -> bool:
+    """Listen briefly for a spoken yes."""
+    return is_yes(transcribe(record(CONFIRM_SECONDS)))
