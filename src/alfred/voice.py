@@ -12,6 +12,7 @@ voice itself needs nothing beyond Windows.
 """
 
 import os
+import random
 import re
 import subprocess
 import tempfile
@@ -28,6 +29,29 @@ CONFIRM_SECONDS = 3.5
 # present, Windows SAPI otherwise. ALFRED_TTS=sapi forces the fallback.
 PIPER_VOICE = os.environ.get("ALFRED_PIPER_VOICE", "en_GB-alan-medium")
 VOICES_DIR = config.DATA_DIR / "voices"
+# pace: higher = brisker (maps to piper length_scale = 1/pace)
+VOICE_PACE = float(os.environ.get("ALFRED_VOICE_PACE", "1.18"))
+# Alfred's own loudness, 0.0-1.0 — independent of the system master volume
+VOICE_VOLUME = float(os.environ.get("ALFRED_VOICE_VOLUME", "0.85"))
+
+_DONE = ["Very good, sir.", "Done, sir.", "As you wish.",
+         "Consider it done, sir.", "At once, sir.", "All handled, sir."]
+_STAND_DOWN = ["As you were, sir.", "Very well, sir.", "Standing down, sir.",
+               "Of course — not a finger lifted."]
+_SORRY = ["My apologies, sir — do see the panel.",
+          "Something went sideways, sir.", "That one got away from me, sir."]
+
+
+def nod() -> str:
+    return random.choice(_DONE)
+
+
+def stand_down() -> str:
+    return random.choice(_STAND_DOWN)
+
+
+def apologize() -> str:
+    return random.choice(_SORRY)
 
 _SPEAK = ["powershell", "-NoProfile", "-Command",
           "Add-Type -AssemblyName System.Speech; "
@@ -64,8 +88,11 @@ def piper_to_wav(text: str, wav_path: str) -> bool:
         from piper import PiperVoice
         _piper = PiperVoice.load(str(model))
     import wave
+
+    from piper import SynthesisConfig
+    style = SynthesisConfig(length_scale=1.0 / VOICE_PACE, volume=VOICE_VOLUME)
     with wave.open(wav_path, "wb") as wav:
-        _piper.synthesize_wav(text, wav)
+        _piper.synthesize_wav(text, wav, syn_config=style)
     return True
 
 
