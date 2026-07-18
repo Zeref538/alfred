@@ -45,6 +45,27 @@ def test_burn_the_days_page(ledger):
     assert ledger.today() == []
 
 
+def test_pages_expire_after_retention(tmp_path):
+    import datetime
+
+    from alfred.ledger import RETENTION_DAYS
+
+    book = tmp_path / "ledger"
+    book.mkdir()
+    old_day = datetime.date.today() - datetime.timedelta(days=RETENTION_DAYS + 1)
+    stale = book / f"{old_day.isoformat()}.jsonl"
+    stale.write_text('{"event": "action"}\n', encoding="utf-8")
+    fresh = book / f"{datetime.date.today().isoformat()}.jsonl"
+    fresh.write_text('{"event": "action"}\n', encoding="utf-8")
+    keepsake = book / "notes.jsonl"  # not a dated page — never touched
+    keepsake.write_text("mine\n", encoding="utf-8")
+
+    Ledger(root=tmp_path)
+
+    assert not stale.exists()
+    assert fresh.exists() and keepsake.exists()
+
+
 # --- undo manager ------------------------------------------------------------
 
 def test_undo_is_lifo_and_runs_the_revert():
