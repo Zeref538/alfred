@@ -122,9 +122,12 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
  <div id="cmds">
   <button data-cmd="menu">menu</button><button data-cmd="undo">undo</button>
   <button data-cmd="ledger">ledger</button><button data-cmd="burn">burn</button>
-  <label><input type="checkbox" id="motion"> motion bell</label>
+  <label title="webcam rings the stop bell on a big wave — never commands">
+   <input type="checkbox" id="motion"> &#128247; motion bell</label>
+  <span style="color:var(--cy-dim);font-size:.7rem;letter-spacing:.12em">
+   &#9000; CTRL+ALT+C summons this HUD anywhere</span>
  </div>
- <div id="hint">text · voice · hotkey ctrl+alt+c · motion (bell only) — one validated door</div>
+ <div id="hint">inputs: type here · &#9673; mic (5s push-to-talk) · &#128247; motion (stop only) · global hotkey — one validated door</div>
 </div>
 <script>
 const TOKEN = "__TOKEN__";

@@ -113,12 +113,16 @@ def speak_to_wav(text: str, wav_path: str) -> None:
 
 
 def transcribe(audio) -> str:
-    """audio: a WAV path or a float32 numpy array at SAMPLE_RATE."""
+    """audio: a WAV path or a float32 numpy array at SAMPLE_RATE. Known app
+    and bookmark names bias the decoding (whisper hotwords)."""
     global _model
     if _model is None:
         from faster_whisper import WhisperModel
         _model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
-    segments, _ = _model.transcribe(audio, language="en", beam_size=1)
+    from . import vocab
+    known = vocab.hotwords() or None
+    segments, _ = _model.transcribe(audio, language="en", beam_size=1,
+                                    hotwords=known)
     return " ".join(segment.text.strip() for segment in segments).strip()
 
 
