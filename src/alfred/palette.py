@@ -112,10 +112,10 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
             executor.abort.clear()
             continue
         # the mishear guard: say it back, act only on a spoken yes
-        voice.speak(f"I heard: {transcript}. Yes to proceed, sir.")
+        voice.speak(f"{transcript.rstrip('.?!')} — sir?")
         print("  awaiting your yes…")
         if not voice.heard_confirmation():
-            voice.speak("As you were, sir.")
+            voice.speak(voice.stand_down())
             ledger.record(event="voice_declined", transcript=transcript)
             continue
         try:
@@ -125,7 +125,7 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
             voice.speak(str(refusal))
             continue
         ok = run_plan(plan, executor, preapproved)
-        voice.speak("Very good, sir." if ok else "My apologies, sir — see the palette.")
+        voice.speak(voice.nod() if ok else voice.apologize())
 
 
 def _menu() -> None:
