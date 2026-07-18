@@ -32,12 +32,9 @@ def media_control(args: schemas.MediaControl) -> None:
 
 
 def _endpoint():
-    from comtypes import CLSCTX_ALL
-    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    from pycaw.pycaw import AudioUtilities
 
-    device = AudioUtilities.GetSpeakers()
-    interface = device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-    return interface.QueryInterface(IAudioEndpointVolume)
+    return AudioUtilities.GetSpeakers().EndpointVolume
 
 
 def set_volume(args: schemas.SetVolume) -> RevertHandle:
