@@ -26,8 +26,10 @@ from .validator import PlanStep, Refusal, validate_plan
 PROMPT_VERSION = "p2"
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 # small non-thinking default: on this hardware the 4b variant refuses
-# think=false and reasons for minutes; override via ALFRED_MODEL
-DEFAULT_MODEL = os.environ.get("ALFRED_MODEL", "qwen3.5:2b")
+# think=false and reasons for minutes; ALFRED_MODEL / settings override
+def default_model() -> str:
+    from . import settings
+    return settings.get("model")
 TIMEOUT_S = 120
 
 _SYSTEM = """You are Alfred, a butler who controls a PC only through a fixed service menu.
@@ -177,7 +179,7 @@ def correct_transcript(transcript: str) -> str:
         {"role": "user", "content": repaired},
     ]
     try:
-        raw = _ollama_generate(messages, DEFAULT_MODEL, schema=_CORRECT_SCHEMA)
+        raw = _ollama_generate(messages, default_model(), schema=_CORRECT_SCHEMA)
         suggested = str(json.loads(raw).get("corrected", "")).strip()
     except (Refusal, json.JSONDecodeError):
         return repaired
@@ -189,7 +191,8 @@ def correct_transcript(transcript: str) -> str:
 
 
 class Planner:
-    def __init__(self, generate=None, model: str = DEFAULT_MODEL):
+    def __init__(self, generate=None, model: str | None = None):
+        model = model or default_model()
         self._generate = generate or (lambda messages: _ollama_generate(messages, model))
 
     def plan(self, utterance: str) -> tuple[str, list[PlanStep]]:
