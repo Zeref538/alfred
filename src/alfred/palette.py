@@ -82,12 +82,15 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
         _menu()
     elif command == "ask" and rest:
         from .customs import HouseCustoms
-        customs = HouseCustoms()
-        plan = customs.match(" ".join(rest))
-        if plan is None:
-            raise Refusal(
-                "I don't know that one by heart yet, sir. Routines I know: "
-                + (", ".join(customs.names()) or "none at all"))
+        utterance = " ".join(rest)
+        plan = HouseCustoms().match(utterance)
+        if plan is not None:
+            ledger.record(event="plan", source="customs", utterance=utterance)
+        else:
+            from .planner import PROMPT_VERSION, Planner
+            plan, _ = Planner().plan(utterance)  # raises Refusal on a decline
+            ledger.record(event="plan", source="llm",
+                          prompt_version=PROMPT_VERSION, utterance=utterance)
         run_plan(plan, executor, preapproved)
     elif command == "act" and rest:
         plan = json.dumps({"plan": [{"action": rest[0], "args": _parse_kv(rest[1:])}]})

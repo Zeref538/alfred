@@ -235,7 +235,7 @@ autonomous or unattended operation — Alfred acts only on an explicit summons.
 ## Stack
 
 Python · faster-whisper · openWakeWord · Piper/Windows TTS · Ollama with a
-small local instruct model (e.g. `qwen2.5:3b-instruct` or `llama3.2:3b`;
-final pick benchmarked at build time) + optional Azure OpenAI ·
+small local instruct model (qwen3.5 family — 0.8b/2b/4b pulled locally;
+final pick benchmarked on this laptop at build time) + optional Azure OpenAI ·
 Playwright/CDP · pywinauto + Win32 · pycaw (Core Audio) · named-pipe IPC for
 the HUD · pystray · pydantic · JSONL ledger · pytest + GitHub Actions.
