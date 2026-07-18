@@ -5,6 +5,8 @@
     carson plan <json | @file>        a full JSON plan
     carson ledger                     today's page of the butler's book
     carson burn                       burn the day's page
+    carson summon [--check]           global hotkey (Ctrl+Alt+C opens the palette)
+    carson tray                       system tray icon (needs the [ui] extra)
     carson                            REPL — same commands, plus `undo`
 
 Consent on the console: Tier 1 plans are announced; Tier 2 plans require an
@@ -106,6 +108,18 @@ def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     preapproved = "--yes" in argv
     argv = [a for a in argv if a != "--yes"]
+
+    if argv[:1] == ["summon"]:
+        from .summon import summon_loop
+        try:
+            summon_loop(check_only="--check" in argv)
+        except RuntimeError as e:
+            print(e)
+            return 1
+        return 0
+    if argv[:1] == ["tray"]:
+        from .tray import main as tray_main
+        return tray_main()
 
     ledger = Ledger()
     undo = UndoManager()
