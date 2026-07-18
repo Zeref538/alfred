@@ -22,17 +22,12 @@ from . import config
 
 SAMPLE_RATE = 16_000
 RECORD_SECONDS = 5
-WHISPER_MODEL = os.environ.get("ALFRED_WHISPER", "small")
 CONFIRM_SECONDS = 3.5
 
 # The butler's voice: a local Piper model (British, JARVIS-adjacent) when
 # present, Windows SAPI otherwise. ALFRED_TTS=sapi forces the fallback.
-PIPER_VOICE = os.environ.get("ALFRED_PIPER_VOICE", "en_GB-alan-medium")
+# Pace, loudness, and model names live in settings (env still wins).
 VOICES_DIR = config.DATA_DIR / "voices"
-# pace: higher = brisker (maps to piper length_scale = 1/pace)
-VOICE_PACE = float(os.environ.get("ALFRED_VOICE_PACE", "1.18"))
-# Alfred's own loudness, 0.0-1.0 — independent of the system master volume
-VOICE_VOLUME = float(os.environ.get("ALFRED_VOICE_VOLUME", "0.85"))
 
 _DONE = ["Very good, sir.", "Done, sir.", "As you wish.",
          "Consider it done, sir.", "At once, sir.", "All handled, sir."]
@@ -70,7 +65,8 @@ _model = None
 def _piper_model() -> Path | None:
     if os.environ.get("ALFRED_TTS") == "sapi":
         return None
-    model = VOICES_DIR / f"{PIPER_VOICE}.onnx"
+    from . import settings
+    model = VOICES_DIR / f"{settings.get('piper_voice')}.onnx"
     return model if model.exists() else None
 
 
@@ -90,7 +86,10 @@ def piper_to_wav(text: str, wav_path: str) -> bool:
     import wave
 
     from piper import SynthesisConfig
-    style = SynthesisConfig(length_scale=1.0 / VOICE_PACE, volume=VOICE_VOLUME)
+
+    from . import settings
+    style = SynthesisConfig(length_scale=1.0 / float(settings.get("voice_pace")),
+                            volume=float(settings.get("voice_volume")))
     with wave.open(wav_path, "wb") as wav:
         _piper.synthesize_wav(text, wav, syn_config=style)
     return True
@@ -118,7 +117,10 @@ def transcribe(audio) -> str:
     global _model
     if _model is None:
         from faster_whisper import WhisperModel
-        _model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+
+        from . import settings
+        _model = WhisperModel(settings.get("whisper"), device="cpu",
+                              compute_type="int8")
     from . import vocab
     known = vocab.hotwords() or None
     segments, _ = _model.transcribe(audio, language="en", beam_size=1,
