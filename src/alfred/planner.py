@@ -68,7 +68,12 @@ def _field_hint(name: str, prop: dict) -> str:
 
 # allowlists live in validators, not schema properties — spell them out
 _MENU_OVERRIDES = {
-    "launch_app": lambda: f"app: {'|'.join(sorted(config.ALLOWED_APPS))}",
+    "launch_app": lambda: (
+        f"app: {'|'.join(sorted(config.ALLOWED_APPS))}"
+        if len(config.ALLOWED_APPS) <= 12
+        else f"app: one of {len(config.ALLOWED_APPS)} registered app names "
+             "(use the app's plain name, e.g. "
+             + ", ".join(sorted(config.ALLOWED_APPS)[:8]) + ", ...)"),
     "settings_change": lambda: "; ".join(
         f"key: {key}, value: {'|'.join(sorted(values))}"
         for key, values in config.SETTINGS_POLICY.items()),

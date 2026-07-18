@@ -15,7 +15,8 @@ def customs(tmp_path):
 
 def test_default_customs_created_on_first_use(customs, tmp_path):
     assert (tmp_path / "customs.yaml").read_text(encoding="utf-8") == DEFAULT_CUSTOMS
-    assert customs.names() == ["quiet_hours", "study_session"]
+    assert customs.names() == ["at_ease", "investment_mode", "quiet_hours",
+                               "school_mode", "study_session", "work_mode"]
 
 
 def test_exact_match_ignores_case_and_punctuation(customs):

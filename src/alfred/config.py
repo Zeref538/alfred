@@ -14,13 +14,31 @@ ALLOWED_FOLDERS: list[Path] = [
     Path.home() / "Desktop",
 ]
 
-# launch_app menu: friendly name -> executable. Bare names only — resolved
-# via the system PATH, never through a shell.
-ALLOWED_APPS: dict[str, str] = {
+# launch_app menu: friendly name -> executable or Start Menu shortcut.
+# Never launched through a shell. `alfred apps scan` writes the user's own
+# registry to ~/.alfred/apps.yaml, which replaces these built-ins.
+_BUILTIN_APPS: dict[str, str] = {
     "notepad": "notepad.exe",
     "calculator": "calc.exe",
     "explorer": "explorer.exe",
 }
+
+APPS_FILE = Path.home() / ".alfred" / "apps.yaml"
+
+
+def load_registered_apps(path: Path = APPS_FILE) -> dict[str, str]:
+    if not path.exists():
+        return dict(_BUILTIN_APPS)
+    import yaml
+    try:
+        loaded = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        apps = {str(k).lower(): str(v) for k, v in loaded.items()}
+        return {**_BUILTIN_APPS, **apps}
+    except Exception:
+        return dict(_BUILTIN_APPS)
+
+
+ALLOWED_APPS: dict[str, str] = load_registered_apps()
 
 # settings_change menu: key -> the exact values permitted.
 SETTINGS_POLICY: dict[str, frozenset[str]] = {

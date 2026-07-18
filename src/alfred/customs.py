@@ -44,6 +44,45 @@ routines:
         args: {enabled: true}
       - action: set_volume
         args: {level: 10}
+  work_mode:
+    phrases:
+      - work mode
+      - time to work
+    plan:
+      - action: toggle_do_not_disturb
+        args: {enabled: true}
+      - action: set_volume
+        args: {level: 15}
+      - action: open_url
+        args: {url: "https://github.com"}
+  school_mode:
+    phrases:
+      - school mode
+      - class time
+    plan:
+      - action: open_url
+        args: {url: "https://learn.microsoft.com/credentials/certifications/exams/ai-102/"}
+      - action: toggle_do_not_disturb
+        args: {enabled: true}
+  investment_mode:
+    phrases:
+      - investment mode
+      - market time
+    plan:
+      - action: open_url
+        args: {url: "https://www.tradingview.com"}
+      - action: open_url
+        args: {url: "https://finance.yahoo.com"}
+  at_ease:
+    phrases:
+      - at ease
+      - back to normal
+      - stand down
+    plan:
+      - action: toggle_do_not_disturb
+        args: {enabled: false}
+      - action: set_volume
+        args: {level: 50}
 """
 
 _FUZZY_CUTOFF = 0.85
