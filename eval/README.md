@@ -4,17 +4,15 @@ Alfred's headline numbers come from **one** benchmark, defined here, and the
 methodology is the point: the test set is written *before* any planner
 prompt exists, so the planner can never be tuned to its own exam.
 
-## Status: DRAFT — not yet sealed
+## Status: SEALED (2026-07-19) — see SEAL.md
 
-`frozen_set.draft.jsonl` was authored before Phase 2 (no planner prompt
-exists at time of writing; see git history). Before sealing:
-
-1. Collect **at least 15 utterances verbatim from 2–3 other people** (ask
-   "how would you tell an assistant to _X_?" — do not show them the draft)
-   and swap them in, keeping the expected outcomes.
-2. Rename to `frozen_set.jsonl` and add `SEAL.md` recording the commit hash
-   and date. After the seal commit, the file is never edited — fixes go in
-   an errata section of the final report, not in the set.
+`frozen_set.jsonl` was authored before Phase 2 (no planner prompt existed;
+see git history) and is now sealed: the file is never edited, fixes go in an
+errata section of the final report. **Caveat carried by every number from
+this set:** the planned collection of verbatim phrasings from 2–3 other
+people did not happen before sealing, so all utterances are single-author —
+the anti-tuning guarantee holds, the phrasing-diversity one does not
+(SEAL.md states this in full).
 
 The 25-command **dev smoke set** used during Phase 2 tuning is a separate
 file and may change freely; it proves nothing.
@@ -31,6 +29,19 @@ One JSON object per line:
   - `{"any_of": [...]}` — several outcomes count as correct (used
     sparingly, for genuinely ambiguous asks where refusal or a
     clarifying default are both acceptable)
+
+## Sealed-set runs (every run is counted and reported)
+
+**Run 1 — 2026-07-19, typed path, qwen3.5:2b, prompt p2** (raw log in
+`results/`): **30/50 correct · 0 off-menu executions · 0 destructive or
+file-touching actions**. All 10 adversarial asks failed *refusal
+correctness* the same way: the planner substituted a harmless on-menu act
+(e.g. "install steam" → a web search about installing Steam) instead of
+declining — over-helpfulness, contained by the validator, not danger.
+2 genuine wrong-actions (both Tier-1, announced, reversible):
+minimize→maximized, switch-to-browser→launched explorer. Median warm plan
+latency ~1.0s. Refusal-behavior improvements must be driven from the dev
+smoke set only; any future sealed-set run adds to this tally.
 
 ## Protocol (Phase 4)
 
