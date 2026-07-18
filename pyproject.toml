@@ -17,6 +17,7 @@ dev = ["pytest>=8"]
 ui = ["pystray>=0.19", "Pillow>=10"]
 media = ["pycaw>=20240210"]
 voice = ["faster-whisper>=1.0", "sounddevice>=0.4"]
+motion = ["opencv-python>=4.10"]
 
 [project.scripts]
 alfred = "alfred.palette:main"
