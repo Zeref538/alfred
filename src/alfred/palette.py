@@ -164,6 +164,22 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
     elif command == "burn":
         ledger.burn_today()
         print("The day's page is ash, sir.")
+    elif command == "apps":
+        from . import config
+        if rest[:1] == ["scan"]:
+            import yaml
+
+            from .adapters.apps import scan_start_menu
+            apps = scan_start_menu()
+            config.APPS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            config.APPS_FILE.write_text(yaml.safe_dump(apps, sort_keys=True),
+                                        encoding="utf-8")
+            print(f"{len(apps)} applications registered, sir "
+                  f"({config.APPS_FILE}) — effective on my next summons.")
+        else:
+            print(f"Apps on the menu ({len(config.ALLOWED_APPS)}):")
+            for name in sorted(config.ALLOWED_APPS):
+                print("  " + name)
     else:
         raise Refusal(f"I don't recognise '{command}', sir. Try: menu, ask, act, plan, undo, ledger, burn.")
 
