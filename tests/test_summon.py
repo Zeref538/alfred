@@ -4,7 +4,7 @@ import ctypes
 
 import pytest
 
-from carson import summon
+from alfred import summon
 
 
 def _hotkeys_available() -> bool:

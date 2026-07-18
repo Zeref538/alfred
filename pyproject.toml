@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "carson"
+name = "alfred"
 version = "0.1.0"
 description = "A proper butler for your PC — local agentic assistant with a deterministic safety gate"
 requires-python = ">=3.12"
@@ -18,7 +18,7 @@ ui = ["pystray>=0.19", "Pillow>=10"]
 media = ["pycaw>=20240210"]
 
 [project.scripts]
-carson = "carson.palette:main"
+alfred = "alfred.palette:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

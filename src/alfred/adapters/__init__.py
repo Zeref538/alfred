@@ -1,4 +1,4 @@
-"""Deterministic adapters: the only hands Carson has.
+"""Deterministic adapters: the only hands Alfred has.
 
 Each adapter is a plain function taking the validated, typed args for its
 action. Adapters trust their input — by the time they run, the validator and
