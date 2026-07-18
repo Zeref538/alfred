@@ -1,7 +1,10 @@
+import os
 import webbrowser
 from urllib.parse import quote_plus
 
 from .. import schemas
+
+SEARCH_URL = os.environ.get("ALFRED_SEARCH", "https://www.google.com/search?q=")
 
 
 def open_url(args: schemas.OpenUrl) -> None:
@@ -9,4 +12,4 @@ def open_url(args: schemas.OpenUrl) -> None:
 
 
 def web_search(args: schemas.WebSearch) -> None:
-    webbrowser.open(f"https://duckduckgo.com/?q={quote_plus(args.query)}")
+    webbrowser.open(SEARCH_URL + quote_plus(args.query))
