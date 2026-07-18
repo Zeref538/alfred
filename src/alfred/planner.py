@@ -16,6 +16,7 @@ that is *all* it can do. Reliability by construction, not hope:
 
 import json
 import os
+import re
 import urllib.request
 
 from . import config
@@ -118,13 +119,13 @@ def response_schema() -> dict:
     }
 
 
-def _ollama_generate(messages: list[dict], model: str) -> str:
+def _ollama_generate(messages: list[dict], model: str, schema: dict | None = None) -> str:
     body = json.dumps({
         "model": model,
         "messages": messages,
         "stream": False,
         "think": False,  # qwen3.5 reasons for hundreds of tokens otherwise — latency, not accuracy
-        "format": response_schema(),
+        "format": schema or response_schema(),
         "options": {"temperature": 0, "seed": 7},
     }).encode("utf-8")
     request = urllib.request.Request(
@@ -134,6 +135,57 @@ def _ollama_generate(messages: list[dict], model: str) -> str:
             return json.loads(response.read())["message"]["content"]
     except OSError as e:
         raise Refusal(f"My thinking cap is unavailable, sir ({e}).") from None
+
+
+_CORRECT_SCHEMA = {"type": "object", "properties": {"corrected": {"type": "string"}},
+                   "required": ["corrected"]}
+
+
+_NUMBER_WORDS = frozenset(
+    "zero one two three four five six seven eight nine ten eleven twelve "
+    "thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty "
+    "thirty forty fifty sixty seventy eighty ninety hundred half full".split())
+
+
+def _numbers_of(text: str) -> list[str]:
+    return sorted(w for w in re.sub(r"[^a-z0-9 ]", " ", text.lower()).split()
+                  if w.isdigit() or w in _NUMBER_WORDS)
+
+
+def correct_transcript(transcript: str) -> str:
+    """Second hearing, two layers: a deterministic fuzzy pass against the
+    household vocabulary first, then the local LLM for what remains. Any AI
+    suggestion that changes numbers or rewrites too much is discarded — and
+    whatever survives is still read back and confirmed before it can act."""
+    from . import vocab
+    if not transcript:
+        return transcript
+    repaired = vocab.correct(transcript)
+    names = vocab.hotwords()
+    if not names:
+        return repaired
+    messages = [
+        {"role": "system", "content":
+            "You repair speech-to-text errors in short PC-assistant commands. "
+            "Known app and website names: " + names + ". Fix ONLY probable "
+            "mishears of these names or obvious homophones. NEVER change "
+            "numbers or quantities. If nothing is clearly wrong, return the "
+            'text unchanged. Reply as JSON: {"corrected": "..."}\n'
+            'Examples: "open spot if I" -> "open spotify"; '
+            '"go to get hub" -> "go to github"; '
+            '"set the volume to twenty" -> "set the volume to twenty"'},
+        {"role": "user", "content": repaired},
+    ]
+    try:
+        raw = _ollama_generate(messages, DEFAULT_MODEL, schema=_CORRECT_SCHEMA)
+        suggested = str(json.loads(raw).get("corrected", "")).strip()
+    except (Refusal, json.JSONDecodeError):
+        return repaired
+    if (not suggested
+            or _numbers_of(suggested) != _numbers_of(repaired)
+            or abs(len(suggested.split()) - len(repaired.split())) > 3):
+        return repaired
+    return suggested
 
 
 class Planner:
