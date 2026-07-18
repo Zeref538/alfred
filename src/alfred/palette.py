@@ -1,17 +1,17 @@
 """The text command palette — Phase 1's front door, no brain attached.
 
-    carson menu                       show the service menu
-    carson act <action> [k=v ...]     one action (values parsed as JSON when possible)
-    carson ask <words...>             match a routine from the house customs
-    carson plan <json | @file>        a full JSON plan
-    carson ledger                     today's page of the butler's book
-    carson burn                       burn the day's page
-    carson summon [--check]           global hotkey (Ctrl+Alt+C opens the palette)
-    carson tray                       system tray icon (needs the [ui] extra)
-    carson                            REPL — same commands, plus `undo`
+    alfred menu                       show the service menu
+    alfred act <action> [k=v ...]     one action (values parsed as JSON when possible)
+    alfred ask <words...>             match a routine from the house customs
+    alfred plan <json | @file>        a full JSON plan
+    alfred ledger                     today's page of the butler's book
+    alfred burn                       burn the day's page
+    alfred summon [--check]           global hotkey (Ctrl+Alt+C opens the palette)
+    alfred tray                       system tray icon (needs the [ui] extra)
+    alfred                            REPL — same commands, plus `undo`
 
 Consent on the console: Tier 1 plans are announced; Tier 2 plans require an
-explicit yes. Without a terminal to ask, pass --yes or Carson declines.
+explicit yes. Without a terminal to ask, pass --yes or Alfred declines.
 """
 
 import json
@@ -142,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
         print('At your service, sir. ("menu" to browse, "quit" to dismiss me.)')
         while True:
             try:
-                line = input("Carson> ").strip()
+                line = input("Alfred> ").strip()
             except (EOFError, KeyboardInterrupt):
                 line = "quit"
             if line in ("quit", "exit"):

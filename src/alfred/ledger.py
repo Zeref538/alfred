@@ -1,7 +1,7 @@
 """The butler's book: append-only JSONL, one page (file) per day.
 
-Every act Carson performs lands here — intent, action, tier, result, revert
-note. Entries are never edited in place; "Carson, burn the day's page"
+Every act Alfred performs lands here — intent, action, tier, result, revert
+note. Entries are never edited in place; "Alfred, burn the day's page"
 removes the page entirely, which is the supported way to forget.
 """
 

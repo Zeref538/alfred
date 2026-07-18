@@ -1,4 +1,4 @@
-# Carson — A Proper Butler for Your PC
+# Alfred — A Proper Butler for Your PC
 
 > A local agentic AI butler that lives on your machine: summon it by hotkey or
 > voice, ask in plain language, and it opens your tabs, runs your searches,
@@ -16,7 +16,7 @@
 ## The pitch
 
 Everyone builds a "Jarvis" that is a voice loop glued to `webbrowser.open()`.
-Carson's differentiator is the part employers actually respect: **the safety
+Alfred's differentiator is the part employers actually respect: **the safety
 architecture for an agent with hands on a real computer.** The AI never gets
 free control — it plans over a fixed menu of vetted actions, every argument is
 validated before any adapter runs, big actions require consent, reversible
@@ -24,7 +24,7 @@ actions are undoable, and every act is written in the butler's book. YODA's
 trust pattern (AI proposes, deterministic code executes, human gates,
 everything audited), promoted from one dataset to the whole PC.
 
-Headline demo: press the hotkey, say *"Carson, set up my study session"* —
+Headline demo: press the hotkey, say *"Alfred, set up my study session"* —
 it opens the AI-102 guide, your notes repo, and a Pomodoro timer, mutes
 notifications, and announces *"Very good, sir."* Then show the published
 eval: exact counts of correct plans, wrong actions, and refused off-menu
@@ -32,7 +32,7 @@ asks, straight from the harness logs.
 
 ## House rules (the trust architecture)
 
-1. **The service menu (action allowlist).** Carson can only perform actions
+1. **The service menu (action allowlist).** Alfred can only perform actions
    from a typed, versioned registry — `open_url`, `web_search`, `focus_app`,
    `launch_app`, `media_control`, `set_volume`, `toggle_do_not_disturb`,
    `open_file` (whitelisted folders), `clipboard_read/write`, `window_layout`,
@@ -61,7 +61,7 @@ asks, straight from the harness logs.
    - **Tier 2 — by your leave:** settings changes, anything file-touching.
      Preview shown as a diff; explicit confirmation required; auto-revert
      snapshot taken first. In voice mode, confirmation is a spoken phrase —
-     *"go ahead, Carson"* — never a bare "yes," so a mishear can't confirm
+     *"go ahead, Alfred"* — never a bare "yes," so a mishear can't confirm
      itself.
    - Multi-step plans gate at the **highest** tier present in the plan,
      before the first step executes.
@@ -73,15 +73,15 @@ asks, straight from the harness logs.
    reversible action has a tested revert, and irreversible ones (a search
    already run, a phrase already spoken) are labeled as such and tier-gated
    accordingly — the README publishes the per-action undo table rather than
-   claiming everything is undoable. `Ctrl+Alt+Z` or "Carson, undo that"
+   claiming everything is undoable. `Ctrl+Alt+Z` or "Alfred, undo that"
    reverts the last reversible action. A "day's ledger" view lists everything
    he did. The book is append-only per day, transcripts are redactable, and
-   entries expire after 30 days by default — or immediately on "Carson, burn
+   entries expire after 30 days by default — or immediately on "Alfred, burn
    the day's page."
-5. **The bell (kill switch).** Global hotkey and the wake-word "Carson, stop"
+5. **The bell (kill switch).** Global hotkey and the wake-word "Alfred, stop"
    abort any in-flight plan. Defined semantics, not vibes: the executor
    checks the abort flag between plan steps, every adapter call runs under a
-   timeout, already-executed steps remain in the ledger, and Carson offers
+   timeout, already-executed steps remain in the ledger, and Alfred offers
    *"shall I put things back, sir?"* — a plan-level revert of the completed
    reversible steps.
 6. **Discretion (privacy).** Wake word + STT + LLM all local (Whisper +
@@ -90,8 +90,8 @@ asks, straight from the harness logs.
    audio. And a strict data-flow rule for the planner: its prompt may contain
    only the user's command (typed or transcribed) and the static service
    menu — never clipboard contents, page titles, window titles, or file
-   contents. In v1 the clipboard is something Carson moves, never something
-   Carson reads aloud to the model; that is the prompt-injection boundary,
+   contents. In v1 the clipboard is something Alfred moves, never something
+   Alfred reads aloud to the model; that is the prompt-injection boundary,
    stated as a rule rather than a hope.
 
 ## Non-goals (v1)
@@ -99,13 +99,13 @@ asks, straight from the harness logs.
 Scope discipline, in writing: no free-form shell, keyboard, or mouse control;
 no file writes or deletes; no software installs; no cloud audio; no always-on
 microphone by default (push-to-talk is the default, wake word is opt-in); no
-autonomous or unattended operation — Carson acts only on an explicit summons.
+autonomous or unattended operation — Alfred acts only on an explicit summons.
 
 ## Architecture
 
 ```
   hotkey (global)          voice (local Whisper, push-to-talk
-      │                     or local wake word "Carson")
+      │                     or local wake word "Alfred")
       └───────┬─────────────┘
               ▼
    intent → plan
@@ -168,7 +168,7 @@ autonomous or unattended operation — Carson acts only on an explicit summons.
       wake word (openWakeWord).
 - [ ] Spoken confirmations/responses (local TTS, butler persona, brief);
       Tier-2 spoken confirm requires the explicit phrase, per house rule 3.
-- [ ] Kill switch: hotkey + "Carson, stop," with the defined abort semantics.
+- [ ] Kill switch: hotkey + "Alfred, stop," with the defined abort semantics.
 - **Exit gate:** voice-to-action median latency < 2.5s on my laptop for
       routine-matched and Tier-0 commands; LLM-path latency measured and
       reported (not promised).

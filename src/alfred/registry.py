@@ -1,4 +1,4 @@
-"""The service menu: the only actions Carson can ever perform.
+"""The service menu: the only actions Alfred can ever perform.
 
 New capabilities are new registry entries — nothing else. Each entry declares
 its consent tier, whether it is reversible, and the typed argument model the

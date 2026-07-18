@@ -1,4 +1,4 @@
-"""House customs: the routines Carson knows by heart.
+"""House customs: the routines Alfred knows by heart.
 
 A YAML file of named routines with trigger phrases and fixed plans. Matching
 is exact-or-fuzzy on normalized text (stdlib difflib — no LLM round-trip),
@@ -18,7 +18,7 @@ import yaml
 from . import config
 
 DEFAULT_CUSTOMS = """\
-# Carson's house customs — routines he knows by heart.
+# Alfred's house customs — routines he knows by heart.
 # Each routine: trigger phrases and a fixed plan over the service menu.
 # Plans are validated and tier-gated like any other request.
 routines:

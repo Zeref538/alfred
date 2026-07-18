@@ -1,4 +1,4 @@
-# Carson — A Proper Butler for Your PC
+# Alfred — A Proper Butler for Your PC
 
 A local agentic AI butler for Windows: summon it by hotkey or voice, ask in
 plain language, and it opens your tabs, runs your searches, and adjusts your
@@ -28,13 +28,13 @@ See [PLAN.md](PLAN.md) for the full design, tier table, and roadmap.
 ## Using the palette
 
 ```
-carson menu                  the service menu (12 actions, tiers, undoability)
-carson act web_search query="AI-102 study guide"
-carson plan @routine.json    a multi-step JSON plan
-carson ledger | carson burn  read or burn the day's page
-carson summon                Ctrl+Alt+C anywhere opens the palette
-carson tray                  tray icon (pip install -e .[ui])
-carson                       REPL, with in-session undo
+alfred menu                  the service menu (12 actions, tiers, undoability)
+alfred act web_search query="AI-102 study guide"
+alfred plan @routine.json    a multi-step JSON plan
+alfred ledger | alfred burn  read or burn the day's page
+alfred summon                Ctrl+Alt+C anywhere opens the palette
+alfred tray                  tray icon (pip install -e .[ui])
+alfred                       REPL, with in-session undo
 ```
 
 ## Development

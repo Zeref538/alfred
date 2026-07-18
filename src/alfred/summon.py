@@ -21,7 +21,7 @@ _HOTKEY_ID = 1
 
 
 def open_palette() -> None:
-    subprocess.Popen([sys.executable, "-m", "carson"],
+    subprocess.Popen([sys.executable, "-m", "alfred"],
                      creationflags=subprocess.CREATE_NEW_CONSOLE)
 
 
@@ -29,7 +29,7 @@ def register() -> None:
     """Claim Ctrl+Alt+C or raise; callers must unregister()."""
     if not user32.RegisterHotKey(None, _HOTKEY_ID,
                                  _MOD_CONTROL | _MOD_ALT | _MOD_NOREPEAT, _VK_C):
-        raise RuntimeError("Ctrl+Alt+C is already spoken for; Carson cannot answer the bell")
+        raise RuntimeError("Ctrl+Alt+C is already spoken for; Alfred cannot answer the bell")
 
 
 def unregister() -> None:
