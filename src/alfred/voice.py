@@ -136,6 +136,26 @@ def record(seconds: float = RECORD_SECONDS):
     return frames[:, 0]
 
 
+def warm_up() -> None:
+    """Load whisper and the piper voice ahead of the first request, and nudge
+    Ollama to page the planner model in. Meant for a background thread at
+    HUD start — first mic press then answers in ~1s instead of ~40."""
+    try:
+        import numpy as np
+        transcribe(np.zeros(SAMPLE_RATE // 2, dtype="float32"))
+    except Exception:
+        pass
+    try:
+        piper_to_wav("Ready.", str(Path(tempfile.gettempdir()) / "alfred_warm.wav"))
+    except Exception:
+        pass
+    try:
+        from .planner import Planner
+        Planner().plan("warm up")
+    except Exception:  # a Refusal is fine — the model is loaded either way
+        pass
+
+
 def is_stop(transcript: str) -> bool:
     words = re.sub(r"[^a-z ]", "", transcript.lower()).split()
     return "stop" in words and (len(words) <= 3 or "alfred" in words)
