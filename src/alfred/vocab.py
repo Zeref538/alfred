@@ -120,7 +120,7 @@ def correct(utterance: str) -> str:
     terms = _terms()
     if not terms:
         return utterance
-    for size in (3, 2, 1):
+    for size in (1, 2, 3):  # smallest windows first, so command words survive
         for start in range(len(words) - size + 1):
             window = " ".join(words[start:start + size])
             cleaned = re.sub(r"[^a-z0-9 ]", "", window.lower()).strip()
@@ -130,7 +130,7 @@ def correct(utterance: str) -> str:
             for term in terms:
                 score = max(SequenceMatcher(None, cleaned, term).ratio(),
                             SequenceMatcher(None, squashed, term.replace(" ", "")).ratio())
-                if score >= 0.84 and cleaned != term:
+                if score >= 0.82 and term not in cleaned:
                     return correct(" ".join(words[:start] + [term] + words[start + size:]))
     return utterance
 
