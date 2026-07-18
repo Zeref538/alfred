@@ -48,6 +48,7 @@ class Session:
         self._subscribers: list[queue.Queue] = []
         self._gates: dict[str, queue.Queue] = {}
         self._motion = None
+        self._pending_steps = None
 
     # --- events out to the page ---------------------------------------------
 
@@ -94,28 +95,38 @@ class Session:
 
     # --- doing things ---------------------------------------------------------
 
+    def _plan_for(self, utterance: str):
+        if self._resolver is not None:
+            plan = self._resolver(utterance, self.ledger)
+        else:
+            from .palette import _resolve_utterance
+            plan = _resolve_utterance(utterance, self.ledger)
+        return validate_plan(plan)
+
+    def _execute(self, steps, intent: str, spoken: bool = False,
+                 preapproved: bool = False) -> None:
+        # preapproved: the user already said yes to this exact plan preview,
+        # so the tiers don't ask twice
+        gate = (Etiquette(announce=lambda s: True, confirm=lambda s: True)
+                if preapproved else self.etiquette())
+        clear_plan(steps, gate)
+        results = self.executor.run(steps, intent=intent)
+        for r in results:
+            self.emit(type="say", text=f"[{'ok' if r.ok else 'XX'}] {r.action}: {r.detail}",
+                      flash=True)
+        if all(r.ok for r in results):
+            self.say("Done, sir.")
+            if spoken:
+                from .voice import nod
+                self._speak(nod())
+        elif spoken:
+            from .voice import apologize
+            self._speak(apologize())
+
     def ask(self, utterance: str, spoken: bool = False) -> None:
         try:
             self.emit(type="state", state="working")
-            if self._resolver is not None:
-                plan = self._resolver(utterance, self.ledger)
-            else:
-                from .palette import _resolve_utterance
-                plan = _resolve_utterance(utterance, self.ledger)
-            steps = validate_plan(plan)
-            clear_plan(steps, self.etiquette())
-            results = self.executor.run(steps, intent=utterance)
-            for r in results:
-                self.emit(type="say", text=f"[{'ok' if r.ok else 'XX'}] {r.action}: {r.detail}",
-                          flash=True)
-            if all(r.ok for r in results):
-                self.say("Done, sir.")
-                if spoken:
-                    from .voice import nod
-                    self._speak(nod())
-            elif spoken:
-                from .voice import apologize
-                self._speak(apologize())
+            self._execute(self._plan_for(utterance), utterance, spoken)
         except Refusal as refusal:
             self.say(str(refusal))
             if spoken:
@@ -153,7 +164,21 @@ class Session:
             from .voice import stand_down
             self._speak(stand_down())
             return
-        self._speak(f"{transcript.rstrip('.?!')} — sir?")
+        # resolve first, so the user approves the PLAN, not just the words
+        from .gate import describe, describe_spoken
+        try:
+            self.emit(type="state", state="working")
+            self._pending_steps = self._plan_for(transcript)
+        except Refusal as refusal:
+            self.say(str(refusal))
+            self._speak(str(refusal))
+            return
+        finally:
+            self.emit(type="state", state="idle")
+        self.say("He would:")
+        for step in self._pending_steps:
+            self.say("  - " + describe(step))
+        self._speak(f"I shall {describe_spoken(self._pending_steps)} — sir?")
         self.emit(type="state", state="listening")
         try:
             confirmed = voice.heard_confirmation()
@@ -165,7 +190,17 @@ class Session:
             from .voice import stand_down
             self._speak(stand_down())
             return
-        self.ask(transcript, spoken=True)
+        try:
+            self.emit(type="state", state="working")
+            self._execute(self._pending_steps, transcript, spoken=True, preapproved=True)
+        except Refusal as refusal:
+            self.say(str(refusal))
+            self._speak(str(refusal))
+        except Exception as error:
+            self.say(f"My apologies, sir — {type(error).__name__}: {error}")
+        finally:
+            self._pending_steps = None
+            self.emit(type="state", state="idle")
 
     def ring_bell(self, source: str) -> None:
         self.executor.abort.set()
