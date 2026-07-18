@@ -8,6 +8,7 @@
     alfred burn                       burn the day's page
     alfred summon [--check]           global hotkey (Ctrl+Alt+C opens the palette)
     alfred tray                       system tray icon (needs the [ui] extra)
+    alfred voice                      push-to-talk loop (needs the [voice] extra)
     alfred                            REPL — same commands, plus `undo`
 
 Consent on the console: Tier 1 plans are announced; Tier 2 plans require an
@@ -68,6 +69,50 @@ def run_plan(raw: str, executor: Executor, preapproved: bool = False) -> bool:
     return True
 
 
+def _resolve_utterance(utterance: str, ledger: Ledger) -> str:
+    """Customs first (no LLM), planner for novel asks. Raises Refusal."""
+    from .customs import HouseCustoms
+    plan = HouseCustoms().match(utterance)
+    if plan is not None:
+        ledger.record(event="plan", source="customs", utterance=utterance)
+        return plan
+    from .planner import PROMPT_VERSION, Planner
+    plan, _ = Planner().plan(utterance)  # raises Refusal on a decline
+    ledger.record(event="plan", source="llm",
+                  prompt_version=PROMPT_VERSION, utterance=utterance)
+    return plan
+
+
+def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
+    from . import voice
+    print("Push-to-talk: Enter, then speak (5s). Say 'Alfred, stop' to ring "
+          "the bell. Ctrl+C dismisses me.")
+    while True:
+        try:
+            input("[Enter to speak] ")
+        except (EOFError, KeyboardInterrupt):
+            voice.speak("Very good, sir.")
+            return 0
+        transcript = voice.transcribe(voice.record())
+        print(f'  heard: "{transcript}"')
+        if not transcript:
+            continue
+        if voice.is_stop(transcript):
+            executor.abort.set()
+            ledger.record(event="bell", transcript=transcript)
+            voice.speak("As you were, sir.")
+            executor.abort.clear()
+            continue
+        try:
+            plan = _resolve_utterance(transcript, ledger)
+        except Refusal as refusal:
+            print(refusal)
+            voice.speak(str(refusal))
+            continue
+        ok = run_plan(plan, executor, preapproved)
+        voice.speak("Very good, sir." if ok else "My apologies, sir — see the palette.")
+
+
 def _menu() -> None:
     print(f"The service menu ({len(REGISTRY)} items):")
     for spec in REGISTRY.values():
@@ -81,16 +126,7 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
     if command == "menu":
         _menu()
     elif command == "ask" and rest:
-        from .customs import HouseCustoms
-        utterance = " ".join(rest)
-        plan = HouseCustoms().match(utterance)
-        if plan is not None:
-            ledger.record(event="plan", source="customs", utterance=utterance)
-        else:
-            from .planner import PROMPT_VERSION, Planner
-            plan, _ = Planner().plan(utterance)  # raises Refusal on a decline
-            ledger.record(event="plan", source="llm",
-                          prompt_version=PROMPT_VERSION, utterance=utterance)
+        plan = _resolve_utterance(" ".join(rest), ledger)
         run_plan(plan, executor, preapproved)
     elif command == "act" and rest:
         plan = json.dumps({"plan": [{"action": rest[0], "args": _parse_kv(rest[1:])}]})
@@ -137,6 +173,9 @@ def main(argv: list[str] | None = None) -> int:
     ledger = Ledger()
     undo = UndoManager()
     executor = Executor(build_adapters(), ledger, undo)
+
+    if argv[:1] == ["voice"]:
+        return _voice_loop(executor, ledger, preapproved)
 
     try:
         if argv:
