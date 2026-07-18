@@ -28,6 +28,23 @@ def test_ordinary_speech_does_not_ring_the_bell(heard):
     assert not is_stop(heard)
 
 
+@pytest.mark.parametrize("heard", [
+    "Yes.", "yes please", "Confirm.", "go ahead", "do it", "Aye, proceed.",
+])
+def test_spoken_yes_confirms(heard):
+    from alfred.voice import is_yes
+    assert is_yes(heard)
+
+
+@pytest.mark.parametrize("heard", [
+    "", "no", "not yet", "don't do it", "yes... no, cancel that",
+    "stop", "negative", "set the volume to twenty",
+])
+def test_anything_else_stands_down(heard):
+    from alfred.voice import is_yes
+    assert not is_yes(heard)
+
+
 @pytest.mark.skipif(os.environ.get("CI") is not None, reason="no model downloads in CI")
 def test_piper_british_voice_is_intelligible(tmp_path):
     from alfred.voice import _piper_model, piper_to_wav, transcribe

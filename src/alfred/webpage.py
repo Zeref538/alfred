@@ -64,6 +64,10 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
       text-shadow:0 0 5px rgba(57,215,255,.35);
       scrollbar-color:var(--cy-dim) transparent; }
  #log .me { color:#e9fbff; }
+ #log .act { animation:landed .9s ease-out; }
+ @keyframes landed { 0% { background:rgba(57,215,255,.35); text-shadow:0 0 14px var(--cy); }
+                     100% { background:transparent; } }
+ #reactor.blip { animation:pulse .25s ease-in-out 3; }
 
  .gate { border:1px solid var(--amber); background:rgba(40,28,6,.5);
       padding:.6rem .8rem; margin:.6rem 0; display:flex; gap:.8rem;
@@ -127,8 +131,11 @@ const TOKEN = "__TOKEN__";
 const log = document.getElementById("log");
 const reactor = document.getElementById("reactor");
 const stateEl = document.getElementById("state");
-function say(t, me){ const line = document.createElement("div");
+function say(t, me, flash){ const line = document.createElement("div");
   if (me) line.className = "me";
+  if (flash){ line.className = "act";
+    if (!reactor.className){ reactor.className = "blip";
+      setTimeout(()=>{ if(reactor.className==="blip") reactor.className=""; }, 800); } }
   line.textContent = (me ? "› " : "") + t;
   log.append(line); log.scrollTop = log.scrollHeight; }
 function post(path, body){ return fetch(path, {method:"POST",
@@ -164,7 +171,7 @@ function gateCard(e){
 }
 const events = new EventSource("/api/events?t="+TOKEN);
 events.onmessage = (m)=>{ const e = JSON.parse(m.data);
-  if (e.type === "say") say(e.text);
+  if (e.type === "say") say(e.text, false, e.flash);
   else if (e.type === "state") setState(e.state);
   else if (e.type === "gate") gateCard(e);
   else if (e.type === "gate_done"){ const c = document.getElementById("g"+e.id); if(c) c.remove(); } };
