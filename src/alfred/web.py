@@ -143,6 +143,11 @@ class Session:
         self.say(f'Heard: "{transcript}"')
         if not transcript:
             return
+        from .planner import correct_transcript
+        corrected = correct_transcript(transcript)
+        if corrected != transcript:
+            self.say(f'Taking that as: "{corrected}"')
+            transcript = corrected
         if voice.is_stop(transcript):
             self.ring_bell("spoken")
             from .voice import stand_down

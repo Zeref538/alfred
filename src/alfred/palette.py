@@ -78,12 +78,17 @@ def run_plan(raw: str, executor: Executor, preapproved: bool = False) -> bool:
 
 
 def _resolve_utterance(utterance: str, ledger: Ledger) -> str:
-    """Customs first (no LLM), planner for novel asks. Raises Refusal."""
+    """Customs first, then bookmarked sites, then the planner. Raises Refusal."""
     from .customs import HouseCustoms
     plan = HouseCustoms().match(utterance)
     if plan is not None:
         ledger.record(event="plan", source="customs", utterance=utterance)
         return plan
+    from . import vocab
+    url = vocab.site_lookup(utterance)
+    if url is not None:
+        ledger.record(event="plan", source="bookmark", utterance=utterance)
+        return json.dumps({"plan": [{"action": "open_url", "args": {"url": url}}]})
     from .planner import PROMPT_VERSION, Planner
     plan, _ = Planner().plan(utterance)  # raises Refusal on a decline
     ledger.record(event="plan", source="llm",
@@ -111,6 +116,12 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
             voice.speak("As you were, sir.")
             executor.abort.clear()
             continue
+        # second hearing: the LLM repairs likely mishears from the vocabulary
+        from .planner import correct_transcript
+        corrected = correct_transcript(transcript)
+        if corrected != transcript:
+            print(f'  taking that as: "{corrected}"')
+        transcript = corrected
         # the mishear guard: say it back, act only on a spoken yes
         voice.speak(f"{transcript.rstrip('.?!')} — sir?")
         print("  awaiting your yes…")
@@ -180,6 +191,11 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
             print(f"Apps on the menu ({len(config.ALLOWED_APPS)}):")
             for name in sorted(config.ALLOWED_APPS):
                 print("  " + name)
+    elif command == "learn":
+        from . import vocab
+        vocabulary = vocab.build_vocabulary()
+        print(f"Committed to memory, sir: {len(vocabulary['sites'])} bookmarked "
+              f"sites (plus the app roster) — my hearing is tuned to them now.")
     else:
         raise Refusal(f"I don't recognise '{command}', sir. Try: menu, ask, act, plan, undo, ledger, burn.")
 
