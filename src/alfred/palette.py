@@ -6,8 +6,10 @@
     alfred plan <json | @file>        a full JSON plan
     alfred ledger                     today's page of the butler's book
     alfred burn                       burn the day's page
+    alfred web                        local web HUD (127.0.0.1, per-session token)
     alfred hud                        overlay HUD (Tkinter, no extras needed)
-    alfred summon [--check]           global hotkey (Ctrl+Alt+C opens the HUD)
+    alfred summon [--check]           global hotkey (Ctrl+Alt+C opens the web HUD;
+                                      ALFRED_UI=hud for the Tkinter one)
     alfred tray                       system tray icon (needs the [ui] extra)
     alfred voice                      push-to-talk loop (needs the [voice] extra)
     alfred                            REPL — same commands, plus `undo`
@@ -164,6 +166,9 @@ def main(argv: list[str] | None = None) -> int:
     preapproved = "--yes" in argv
     argv = [a for a in argv if a != "--yes"]
 
+    if argv[:1] == ["web"]:
+        from .web import main as web_main
+        return web_main()
     if argv[:1] == ["hud"]:
         from .hud import main as hud_main
         return hud_main()
