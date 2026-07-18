@@ -63,10 +63,15 @@ def run_plan(raw: str, executor: Executor, preapproved: bool = False) -> bool:
     except Refusal as refusal:
         print(refusal)
         return False
-    for result in executor.run(steps, intent=raw):
+    results = executor.run(steps, intent=raw)
+    for result in results:
         mark = "ok" if result.ok else "XX"
         print(f"  [{mark}] {result.action}: {result.detail}")
-    return True
+    if any(r.detail == "aborted by the bell" for r in results):
+        done = sum(r.ok for r in results)
+        print(f"Shall I put things back, sir? {done} step(s) had run — "
+              "'undo' reverts them, most recent first.")
+    return all(r.ok for r in results)
 
 
 def _resolve_utterance(utterance: str, ledger: Ledger) -> str:

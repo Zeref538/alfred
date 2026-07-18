@@ -12,10 +12,23 @@ from pathlib import Path
 from . import config
 
 
+RETENTION_DAYS = 30
+
+
 class Ledger:
     def __init__(self, root: Path | None = None):
         self.root = (root or config.DATA_DIR) / "ledger"
         self.root.mkdir(parents=True, exist_ok=True)
+        self._expire_old_pages()
+
+    def _expire_old_pages(self) -> None:
+        cutoff = datetime.date.today() - datetime.timedelta(days=RETENTION_DAYS)
+        for page in self.root.glob("*.jsonl"):
+            try:
+                if datetime.date.fromisoformat(page.stem) < cutoff:
+                    page.unlink()
+            except ValueError:
+                continue  # not one of our pages; leave it be
 
     def _page(self) -> Path:
         return self.root / f"{datetime.date.today().isoformat()}.jsonl"
