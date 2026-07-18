@@ -22,7 +22,7 @@ from . import config
 from .registry import REGISTRY
 from .validator import PlanStep, Refusal, validate_plan
 
-PROMPT_VERSION = "p1"
+PROMPT_VERSION = "p2"
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 # small non-thinking default: on this hardware the 4b variant refuses
 # think=false and reasons for minutes; override via ALFRED_MODEL
@@ -33,21 +33,57 @@ _SYSTEM = """You are Alfred, a butler who controls a PC only through a fixed ser
 Convert the user's request into a JSON plan using ONLY the actions below.
 Rules:
 - Use the fewest steps that honestly fulfil the request.
-- If the request cannot be fulfilled with the menu (deleting, installing,
-  shutting down, typing, anything else off-menu), return {"plan": []}.
-- If the request is too vague to act on safely, return {"plan": []}.
-- Volumes are 0-100. URLs must be real https URLs.
+- A search is exactly one web_search step. NEVER invent URLs — use open_url
+  only when the user names a site (then use its https:// domain).
+- "skip"/"next song" means media_control next; "pause"/"play" means
+  play_pause; "previous" means previous.
+- If the request names something the menu can do, do it. Return {"plan": []}
+  ONLY when the menu truly cannot fulfil it (deleting, installing, shutting
+  down, typing, closing apps) or the request is too vague to act on safely.
 
-The service menu:
+Examples:
+user: launch notepad
+{"plan": [{"action": "launch_app", "args": {"app": "notepad"}}]}
+user: search for cheap flights to cebu
+{"plan": [{"action": "web_search", "args": {"query": "cheap flights to cebu"}}]}
+user: dark mode and volume to 40
+{"plan": [{"action": "settings_change", "args": {"key": "app_theme", "value": "dark"}},
+          {"action": "set_volume", "args": {"level": 40}}]}
+user: delete my downloads folder
+{"plan": []}
+
+The service menu (argument values shown are the ONLY ones allowed):
 """
+
+
+def _field_hint(name: str, prop: dict) -> str:
+    if "enum" in prop:
+        return f"{name}: {'|'.join(map(str, prop['enum']))}"
+    if prop.get("type") == "integer":
+        low, high = prop.get("minimum"), prop.get("maximum")
+        bounds = f" {low}-{high}" if low is not None and high is not None else ""
+        return f"{name}: integer{bounds}"
+    return f"{name}: {prop.get('type', 'value')}"
+
+
+# allowlists live in validators, not schema properties — spell them out
+_MENU_OVERRIDES = {
+    "launch_app": lambda: f"app: {'|'.join(sorted(config.ALLOWED_APPS))}",
+    "settings_change": lambda: "; ".join(
+        f"key: {key}, value: {'|'.join(sorted(values))}"
+        for key, values in config.SETTINGS_POLICY.items()),
+}
 
 
 def menu_text() -> str:
     lines = []
     for spec in REGISTRY.values():
-        schema = spec.args.model_json_schema()
-        props = schema.get("properties", {})
-        args = ", ".join(f"{k}: {v.get('type', v.get('enum', '?'))}" for k, v in props.items())
+        override = _MENU_OVERRIDES.get(spec.name)
+        if override:
+            args = override()
+        else:
+            props = spec.args.model_json_schema().get("properties", {})
+            args = ", ".join(_field_hint(k, v) for k, v in props.items())
         lines.append(f"- {spec.name}({args}) — {spec.summary}")
     return "\n".join(lines)
 
