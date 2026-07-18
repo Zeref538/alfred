@@ -35,7 +35,7 @@ through it, and the etiquette gate sits behind it.
 | 3 | **Prompt injection via ambient data** — hostile text in clipboard/titles/pages steers the planner | clipboard contains "ignore previous instructions…" | Data-flow rule (rule 6): the planner prompt contains only the utterance and the static menu. `clipboard_read` output goes to the user, never into a prompt. Tested: prompt messages are exactly `[system, user]` |
 | 4 | **Malicious/buggy house customs** — a user-authored routine smuggles an action | `customs.yaml` routine with `run_shell` | Matched routines re-enter through the validator like any other plan (tested: the evil routine dies at the gate) |
 | 5 | **Path/URL smuggling** — traversal or scheme abuse inside valid actions | `..\..\Windows\System32`, `javascript:` | Resolve-then-contain path policy; http(s)-with-host-only URL policy; exact-match allowlists with typed values |
-| 6 | **Local attack surface** — a web page probes a local control port | classic localhost-CSRF | No listening socket exists. Summon is a hotkey; the tray is in-process. If an HTTP HUD is ever added: 127.0.0.1 + per-session token, no unauthenticated action endpoints (PLAN.md commitment) |
+| 6 | **Local attack surface** — a web page probes a local control port | classic localhost-CSRF / DNS rebinding | The web HUD binds 127.0.0.1 on a random port with a per-session bearer token; every request is token-checked (401 without) and Host-checked (403 on rebinding); no cookies exist, so cross-site requests carry nothing. Tested in CI: no-token, stolen-wrong-token, hostile-Host, unknown-route. The Tkinter HUD and tray remain socket-free |
 | 7 | **Runaway plan** — a multi-step plan mid-flight after a mistake | wrong routine triggered | The bell: hotkey / "Alfred, stop" sets an abort flag checked between steps; adapters run under timeouts; completed reversible steps offer "shall I put things back" via undo |
 | 8 | **Ledger as liability** — transcripts accumulate forever | private utterances on disk | Pages expire after 30 days; "burn the day's page" purges immediately; the book is local JSONL, never transmitted |
 
@@ -44,7 +44,9 @@ through it, and the etiquette gate sits behind it.
 No shell, no keystrokes/mouse synthesis to arbitrary apps, no file writes or
 deletes, no installs, no process kill, no shutdown, no network calls except
 opening the user's browser and the local Ollama socket, no cloud audio, no
-always-on microphone (push-to-talk only), no autonomous operation.
+always-on microphone (push-to-talk only), no autonomous operation. The
+opt-in motion sensor can only ring the stop bell — it cannot form, select,
+or confirm a command, and its frames never leave the process.
 
 ## Residual risks, stated honestly
 
