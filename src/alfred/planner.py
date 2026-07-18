@@ -127,6 +127,7 @@ def _ollama_generate(messages: list[dict], model: str, schema: dict | None = Non
         "messages": messages,
         "stream": False,
         "think": False,  # qwen3.5 reasons for hundreds of tokens otherwise — latency, not accuracy
+        "keep_alive": "30m",  # the ~35s cold reload is the real latency enemy
         "format": schema or response_schema(),
         "options": {"temperature": 0, "seed": 7},
     }).encode("utf-8")

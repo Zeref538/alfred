@@ -80,13 +80,22 @@ def build_vocabulary() -> dict:
     return vocabulary
 
 
+_cache: tuple | None = None  # ((path, mtime), parsed)
+
+
 def load() -> dict:
+    global _cache
     if not VOCAB_FILE.exists():
         return {"sites": {}}
+    key = (str(VOCAB_FILE), VOCAB_FILE.stat().st_mtime)
+    if _cache is not None and _cache[0] == key:
+        return _cache[1]
     try:
-        return yaml.safe_load(VOCAB_FILE.read_text(encoding="utf-8")) or {"sites": {}}
+        parsed = yaml.safe_load(VOCAB_FILE.read_text(encoding="utf-8")) or {"sites": {}}
     except Exception:
-        return {"sites": {}}
+        parsed = {"sites": {}}
+    _cache = (key, parsed)
+    return parsed
 
 
 def hotwords() -> str:

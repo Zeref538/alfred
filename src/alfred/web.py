@@ -400,6 +400,8 @@ def main() -> int:
     print(f"At your service: {url}", flush=True)
     print("(the token is this session's key — the page keeps it; Ctrl+C dismisses me)",
           flush=True)
+    from . import voice
+    threading.Thread(target=voice.warm_up, daemon=True).start()
     webbrowser.open(url)
     try:
         server.serve_forever()
