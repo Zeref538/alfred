@@ -23,14 +23,23 @@ DEFAULTS: dict[str, str] = {
 }
 
 
+_cache: tuple | None = None  # ((path, mtime), parsed)
+
+
 def load() -> dict[str, str]:
+    global _cache
     if not SETTINGS_FILE.exists():
         return {}
+    key = (str(SETTINGS_FILE), SETTINGS_FILE.stat().st_mtime)
+    if _cache is not None and _cache[0] == key:
+        return _cache[1]
     try:
         doc = yaml.safe_load(SETTINGS_FILE.read_text(encoding="utf-8")) or {}
-        return {str(k): str(v) for k, v in doc.items()}
+        parsed = {str(k): str(v) for k, v in doc.items()}
     except Exception:
-        return {}
+        parsed = {}
+    _cache = (key, parsed)
+    return parsed
 
 
 def save(values: dict[str, str]) -> None:

@@ -77,11 +77,22 @@ never command). Everything reaches the machine through the same
 validator → gate → executor path. The web HUD binds 127.0.0.1 with a
 per-session token and a Host check; see THREATMODEL.md row 6.
 
-`ask` matches your routines first (`~/.alfred/customs.yaml`, no LLM
-round-trip), then falls back to a local model via Ollama — structured
-outputs, temperature 0, one repair attempt, and a polite refusal for
-anything off-menu. Configure with `ALFRED_MODEL` (default `qwen3.5:2b`)
-and `ALFRED_WHISPER` (default `base`).
+`ask` matches your routines and modes first (`~/.alfred/customs.yaml` —
+work/school/investment modes ship as defaults), then bookmarked sites
+("open github"), then a local model via Ollama — structured outputs,
+temperature 0, one repair attempt, a polite refusal for anything off-menu,
+and a 30-minute keep-alive so the model stays warm.
+
+**Voice flow, guarded:** speak → whisper (biased toward your app and
+bookmark names via `alfred learn`) → a two-layer mishear corrector (fuzzy
+vocabulary repair, then the LLM with a never-change-numbers rule) → Alfred
+*shows and speaks the exact plan* → nothing runs until your spoken yes.
+
+**Settings** live in the web HUD's ⚙ page (`/settings`) and persist to
+`~/.alfred/settings.yaml`: voice pace, Alfred's own volume, whisper model
+(default `small`), planner model, search engine, plus the routines/modes
+editor and rescan buttons. Environment variables (`ALFRED_MODEL`,
+`ALFRED_WHISPER`, `ALFRED_VOICE_PACE`, …) always win over the file.
 
 **The voice.** Alfred speaks with a local British Piper voice when one is
 installed (one-time, ~60 MB, fully offline):
