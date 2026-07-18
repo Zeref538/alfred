@@ -21,7 +21,9 @@ _HOTKEY_ID = 1
 
 
 def open_palette() -> None:
-    subprocess.Popen([sys.executable, "-m", "alfred", "hud"],
+    import os
+    ui = os.environ.get("ALFRED_UI", "web")
+    subprocess.Popen([sys.executable, "-m", "alfred", ui],
                      creationflags=subprocess.CREATE_NO_WINDOW)
 
 

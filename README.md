@@ -56,16 +56,26 @@ leave (explicit consent).
 ## Using Alfred
 
 ```
+alfred web                   local web HUD — text · mic · bell · motion toggle
+alfred hud                   Tkinter overlay (no extras, no sockets)
 alfred menu                  the service menu
 alfred ask silence the notifications
 alfred act set_volume level=30
 alfred plan @routine.json    a multi-step JSON plan
 alfred voice                 push-to-talk loop ([voice] extra)
-alfred summon                Ctrl+Alt+C anywhere opens the palette
+alfred summon                Ctrl+Alt+C anywhere opens the web HUD (ALFRED_UI=hud
+                             for the Tkinter one)
 alfred tray                  tray icon ([ui] extra)
 alfred ledger | alfred burn  read or burn the day's page
 alfred                       REPL, with in-session undo
 ```
+
+Four ways in, one door out: **text** (any UI), **audio** (mic button or
+`alfred voice` — local whisper), **hotkey** (global summon), **motion**
+(opt-in webcam *stop bell*, `[motion]` extra — movement can only abort,
+never command). Everything reaches the machine through the same
+validator → gate → executor path. The web HUD binds 127.0.0.1 with a
+per-session token and a Host check; see THREATMODEL.md row 6.
 
 `ask` matches your routines first (`~/.alfred/customs.yaml`, no LLM
 round-trip), then falls back to a local model via Ollama — structured
