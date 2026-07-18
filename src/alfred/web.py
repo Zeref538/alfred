@@ -111,9 +111,11 @@ class Session:
             if all(r.ok for r in results):
                 self.say("Done, sir.")
                 if spoken:
-                    self._speak("Very good, sir. Done.")
+                    from .voice import nod
+                    self._speak(nod())
             elif spoken:
-                self._speak("My apologies, sir — see the panel.")
+                from .voice import apologize
+                self._speak(apologize())
         except Refusal as refusal:
             self.say(str(refusal))
             if spoken:
@@ -143,9 +145,10 @@ class Session:
             return
         if voice.is_stop(transcript):
             self.ring_bell("spoken")
-            self._speak("As you were, sir.")
+            from .voice import stand_down
+            self._speak(stand_down())
             return
-        self._speak(f"I heard: {transcript}. Yes to proceed, sir.")
+        self._speak(f"{transcript.rstrip('.?!')} — sir?")
         self.emit(type="state", state="listening")
         try:
             confirmed = voice.heard_confirmation()
@@ -154,7 +157,8 @@ class Session:
         if not confirmed:
             self.ledger.record(event="voice_declined", transcript=transcript)
             self.say("No confirmation — standing down.")
-            self._speak("As you were, sir.")
+            from .voice import stand_down
+            self._speak(stand_down())
             return
         self.ask(transcript, spoken=True)
 
