@@ -83,6 +83,17 @@ outputs, temperature 0, one repair attempt, and a polite refusal for
 anything off-menu. Configure with `ALFRED_MODEL` (default `qwen3.5:2b`)
 and `ALFRED_WHISPER` (default `base`).
 
+**The voice.** Alfred speaks with a local British Piper voice when one is
+installed (one-time, ~60 MB, fully offline):
+
+```
+pip install -e .[voice]
+python -m piper.download_voices en_GB-alan-medium --data-dir %USERPROFILE%\.alfred\voices
+```
+
+Falls back to Windows SAPI otherwise. `ALFRED_PIPER_VOICE` picks a
+different Piper voice; `ALFRED_TTS=sapi` forces the fallback.
+
 ## Numbers so far (dev smoke set — not the sealed eval)
 
 From `eval/results/`, reproducible via `python -m alfred.harness
