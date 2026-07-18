@@ -14,10 +14,19 @@ voice itself needs nothing beyond Windows.
 import os
 import re
 import subprocess
+import tempfile
+from pathlib import Path
+
+from . import config
 
 SAMPLE_RATE = 16_000
 RECORD_SECONDS = 5
 WHISPER_MODEL = os.environ.get("ALFRED_WHISPER", "base")
+
+# The butler's voice: a local Piper model (British, JARVIS-adjacent) when
+# present, Windows SAPI otherwise. ALFRED_TTS=sapi forces the fallback.
+PIPER_VOICE = os.environ.get("ALFRED_PIPER_VOICE", "en_GB-alan-medium")
+VOICES_DIR = config.DATA_DIR / "voices"
 
 _SPEAK = ["powershell", "-NoProfile", "-Command",
           "Add-Type -AssemblyName System.Speech; "
@@ -33,7 +42,38 @@ _SPEAK_TO_WAV = ["powershell", "-NoProfile", "-Command",
 _model = None
 
 
+def _piper_model() -> Path | None:
+    if os.environ.get("ALFRED_TTS") == "sapi":
+        return None
+    model = VOICES_DIR / f"{PIPER_VOICE}.onnx"
+    return model if model.exists() else None
+
+
+_piper = None
+
+
+def piper_to_wav(text: str, wav_path: str) -> bool:
+    """Synthesize with the local Piper voice (cached in-process — ~0.1s a
+    line after the one-time model load). False if Piper isn't set up."""
+    global _piper
+    model = _piper_model()
+    if model is None:
+        return False
+    if _piper is None:
+        from piper import PiperVoice
+        _piper = PiperVoice.load(str(model))
+    import wave
+    with wave.open(wav_path, "wb") as wav:
+        _piper.synthesize_wav(text, wav)
+    return True
+
+
 def speak(text: str) -> None:
+    wav_path = Path(tempfile.gettempdir()) / "alfred_says.wav"
+    if piper_to_wav(text, str(wav_path)):
+        import winsound
+        winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
+        return
     subprocess.run(_SPEAK, input=text.encode("utf-8"), capture_output=True, timeout=60)
 
 

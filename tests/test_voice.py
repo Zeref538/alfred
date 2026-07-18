@@ -29,6 +29,18 @@ def test_ordinary_speech_does_not_ring_the_bell(heard):
 
 
 @pytest.mark.skipif(os.environ.get("CI") is not None, reason="no model downloads in CI")
+def test_piper_british_voice_is_intelligible(tmp_path):
+    from alfred.voice import _piper_model, piper_to_wav, transcribe
+
+    if _piper_model() is None:
+        pytest.skip("no piper voice model installed")
+    wav = str(tmp_path / "alfred.wav")
+    assert piper_to_wav("Very good, sir. The study session is prepared.", wav)
+    heard = transcribe(wav).lower()
+    assert "very good" in heard and "study session" in heard
+
+
+@pytest.mark.skipif(os.environ.get("CI") is not None, reason="no model downloads in CI")
 def test_loopback_tts_to_whisper(tmp_path):
     from alfred.voice import speak_to_wav, transcribe
 
