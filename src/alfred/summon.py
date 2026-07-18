@@ -21,8 +21,8 @@ _HOTKEY_ID = 1
 
 
 def open_palette() -> None:
-    subprocess.Popen([sys.executable, "-m", "alfred"],
-                     creationflags=subprocess.CREATE_NEW_CONSOLE)
+    subprocess.Popen([sys.executable, "-m", "alfred", "hud"],
+                     creationflags=subprocess.CREATE_NO_WINDOW)
 
 
 def register() -> None:
