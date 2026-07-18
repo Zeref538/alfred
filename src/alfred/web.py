@@ -249,6 +249,24 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(PAGE.replace("__TOKEN__", token).encode("utf-8"))
+            elif route == "/settings":
+                from .webpage import SETTINGS_PAGE
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(SETTINGS_PAGE.replace("__TOKEN__", token).encode("utf-8"))
+            elif route == "/api/settings":
+                from . import settings
+                from .customs import HouseCustoms
+                customs_path = HouseCustoms().path
+                payload = json.dumps({
+                    "settings": settings.current(),
+                    "customs": customs_path.read_text(encoding="utf-8"),
+                })
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(payload.encode("utf-8"))
             elif route == "/api/events":
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream")
@@ -286,6 +304,46 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                                  args=(str(body.get("name", "")),), daemon=True).start()
             elif route == "/api/motion":
                 session.motion(bool(body.get("enable")))
+            elif route == "/api/settings":
+                from . import settings, voice
+                settings.save({str(k): str(v) for k, v in body.items()})
+                voice._model = None   # whisper/piper choices apply immediately
+                voice._piper = None
+                session.say("Preferences noted, sir.")
+            elif route == "/api/customs":
+                import yaml as _yaml
+
+                from .customs import HouseCustoms
+                text = str(body.get("text", ""))
+                try:
+                    doc = _yaml.safe_load(text)
+                    assert isinstance(doc, dict) and isinstance(doc.get("routines"), dict)
+                except Exception:
+                    self._deny(400, "that is not a well-formed customs file, sir")
+                    return
+                HouseCustoms().path.write_text(text, encoding="utf-8")
+                session.say(f"House customs updated, sir — {len(doc['routines'])} routines.")
+            elif route == "/api/rescan":
+                what = str(body.get("what", ""))
+                if what == "apps":
+                    import yaml as _yaml
+
+                    from . import config
+                    from .adapters.apps import scan_start_menu
+                    apps = scan_start_menu()
+                    config.APPS_FILE.parent.mkdir(parents=True, exist_ok=True)
+                    config.APPS_FILE.write_text(_yaml.safe_dump(apps, sort_keys=True),
+                                                encoding="utf-8")
+                    session.say(f"{len(apps)} applications registered, sir "
+                                "(effective on my next summons).")
+                elif what == "vocab":
+                    from . import vocab
+                    vocabulary = vocab.build_vocabulary()
+                    session.say(f"{len(vocabulary['sites'])} bookmarked sites "
+                                "committed to memory, sir.")
+                else:
+                    self._deny(404, "not on the menu")
+                    return
             else:
                 self._deny(404, "not on the menu")
                 return
