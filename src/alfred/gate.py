@@ -24,6 +24,17 @@ def describe(step: PlanStep) -> str:
     return f"{step.spec.name}({detail})" if detail else step.spec.name
 
 
+def describe_spoken(steps: list[PlanStep]) -> str:
+    """A plan as the butler would say it: summaries, not signatures."""
+    parts = []
+    for step in steps:
+        args = step.args.model_dump()
+        value = next(iter(args.values()), None)
+        parts.append(step.spec.summary if value is None
+                     else f"{step.spec.summary} — {value}")
+    return "; then ".join(parts)
+
+
 def clear_plan(steps: list[PlanStep], etiquette: Etiquette) -> None:
     """Raise Refusal unless the plan's tier is satisfied. Tier 0 passes silently."""
     tier = plan_tier(steps)

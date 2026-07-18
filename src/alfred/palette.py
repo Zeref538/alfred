@@ -122,20 +122,28 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
         if corrected != transcript:
             print(f'  taking that as: "{corrected}"')
         transcript = corrected
-        # the mishear guard: say it back, act only on a spoken yes
-        voice.speak(f"{transcript.rstrip('.?!')} — sir?")
+        # resolve first: the user approves the PLAN, not just the words
+        from .gate import clear_plan, describe, describe_spoken
+        try:
+            steps = validate_plan(_resolve_utterance(transcript, ledger))
+        except Refusal as refusal:
+            print(refusal)
+            voice.speak(str(refusal))
+            continue
+        print("  he would:")
+        for step in steps:
+            print("   - " + describe(step))
+        voice.speak(f"I shall {describe_spoken(steps)} — sir?")
         print("  awaiting your yes…")
         if not voice.heard_confirmation():
             voice.speak(voice.stand_down())
             ledger.record(event="voice_declined", transcript=transcript)
             continue
-        try:
-            plan = _resolve_utterance(transcript, ledger)
-        except Refusal as refusal:
-            print(refusal)
-            voice.speak(str(refusal))
-            continue
-        ok = run_plan(plan, executor, preapproved)
+        # consent covered the exact plan; the tiers don't ask twice
+        results = executor.run(steps, intent=transcript)
+        for result in results:
+            print(f"  [{'ok' if result.ok else 'XX'}] {result.action}: {result.detail}")
+        ok = all(r.ok for r in results)
         voice.speak(voice.nod() if ok else voice.apologize())
 
 
