@@ -9,6 +9,7 @@ description = "A proper butler for your PC — local agentic assistant with a de
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.12",
+    "PyYAML>=6",
 ]
 
 [project.optional-dependencies]

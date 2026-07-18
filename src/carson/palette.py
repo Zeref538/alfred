@@ -2,6 +2,7 @@
 
     carson menu                       show the service menu
     carson act <action> [k=v ...]     one action (values parsed as JSON when possible)
+    carson ask <words...>             match a routine from the house customs
     carson plan <json | @file>        a full JSON plan
     carson ledger                     today's page of the butler's book
     carson burn                       burn the day's page
@@ -79,6 +80,15 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
     command, rest = words[0], words[1:]
     if command == "menu":
         _menu()
+    elif command == "ask" and rest:
+        from .customs import HouseCustoms
+        customs = HouseCustoms()
+        plan = customs.match(" ".join(rest))
+        if plan is None:
+            raise Refusal(
+                "I don't know that one by heart yet, sir. Routines I know: "
+                + (", ".join(customs.names()) or "none at all"))
+        run_plan(plan, executor, preapproved)
     elif command == "act" and rest:
         plan = json.dumps({"plan": [{"action": rest[0], "args": _parse_kv(rest[1:])}]})
         run_plan(plan, executor, preapproved)
@@ -101,7 +111,7 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
         ledger.burn_today()
         print("The day's page is ash, sir.")
     else:
-        raise Refusal(f"I don't recognise '{command}', sir. Try: menu, act, plan, undo, ledger, burn.")
+        raise Refusal(f"I don't recognise '{command}', sir. Try: menu, ask, act, plan, undo, ledger, burn.")
 
 
 def main(argv: list[str] | None = None) -> int:
