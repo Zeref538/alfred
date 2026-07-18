@@ -88,7 +88,9 @@ def test_tier1_gate_can_be_belayed_over_the_wire(server, tmp_path):
     events = session.subscribe()
     threading.Thread(target=session.ask, args=("volume 5",), daemon=True).start()
     gate = events.get(timeout=5)
-    assert gate["type"] == "gate" and gate["kind"] == "announce"
+    while gate["type"] != "gate":  # state events may precede the gate card
+        gate = events.get(timeout=5)
+    assert gate["kind"] == "announce"
     call(server["port"], "/api/gate", body={"id": gate["id"], "go": False})
     deadline = time.time() + 5
     said = []
