@@ -25,6 +25,18 @@ The AI never gets free control:
 
 See [PLAN.md](PLAN.md) for the full design, tier table, and roadmap.
 
+## Using the palette
+
+```
+carson menu                  the service menu (12 actions, tiers, undoability)
+carson act web_search query="AI-102 study guide"
+carson plan @routine.json    a multi-step JSON plan
+carson ledger | carson burn  read or burn the day's page
+carson summon                Ctrl+Alt+C anywhere opens the palette
+carson tray                  tray icon (pip install -e .[ui])
+carson                       REPL, with in-session undo
+```
+
 ## Development
 
 ```
