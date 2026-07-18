@@ -1,6 +1,8 @@
 import ctypes
 import ctypes.wintypes as wt
+import os
 import subprocess
+from pathlib import Path
 
 from .. import config, schemas
 
@@ -9,7 +11,33 @@ user32 = ctypes.windll.user32
 
 def launch_app(args: schemas.LaunchApp) -> None:
     # validator guaranteed membership; no shell involved
-    subprocess.Popen([config.ALLOWED_APPS[args.app]], shell=False)
+    target = config.ALLOWED_APPS[args.app]
+    if target.lower().endswith(".lnk"):
+        import os
+        os.startfile(target)  # Start Menu shortcut — the OS resolves it
+    else:
+        subprocess.Popen([target], shell=False)
+
+
+START_MENU_DIRS = [
+    Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start Menu/Programs",
+    Path(os.environ.get("PROGRAMDATA", "")) / "Microsoft/Windows/Start Menu/Programs",
+]
+
+
+def scan_start_menu(roots: list[Path] | None = None) -> dict[str, str]:
+    """Every Start Menu shortcut becomes a registrable app: name -> .lnk path.
+    Uninstallers and obvious noise are left out."""
+    apps: dict[str, str] = {}
+    skip = ("uninstall", "readme", "website", "help")
+    for root in roots or START_MENU_DIRS:
+        if not root.is_dir():
+            continue
+        for lnk in sorted(root.rglob("*.lnk")):
+            name = lnk.stem.strip().lower()
+            if name and not any(word in name for word in skip):
+                apps.setdefault(name, str(lnk))
+    return apps
 
 
 def focus_app(args: schemas.FocusApp) -> None:
