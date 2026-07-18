@@ -94,7 +94,7 @@ class Session:
 
     # --- doing things ---------------------------------------------------------
 
-    def ask(self, utterance: str) -> None:
+    def ask(self, utterance: str, spoken: bool = False) -> None:
         try:
             self.emit(type="state", state="working")
             if self._resolver is not None:
@@ -106,17 +106,31 @@ class Session:
             clear_plan(steps, self.etiquette())
             results = self.executor.run(steps, intent=utterance)
             for r in results:
-                self.say(f"[{'ok' if r.ok else 'XX'}] {r.action}: {r.detail}")
+                self.emit(type="say", text=f"[{'ok' if r.ok else 'XX'}] {r.action}: {r.detail}",
+                          flash=True)
             if all(r.ok for r in results):
                 self.say("Done, sir.")
+                if spoken:
+                    self._speak("Very good, sir. Done.")
+            elif spoken:
+                self._speak("My apologies, sir — see the panel.")
         except Refusal as refusal:
             self.say(str(refusal))
+            if spoken:
+                self._speak(str(refusal))
         except Exception as error:  # the service never dies mid-request
             self.say(f"My apologies, sir — {type(error).__name__}: {error}")
         finally:
             self.emit(type="state", state="idle")
 
+    @staticmethod
+    def _speak(text: str) -> None:
+        from . import voice
+        voice.speak(text)
+
     def hear(self) -> None:
+        """Push-to-talk with the mishear guard: Alfred says what he heard and
+        acts only on a spoken yes (or the page's confirm card)."""
         from . import voice
         self.emit(type="state", state="listening")
         self.say("Listening, sir (5 seconds)…")
@@ -129,8 +143,20 @@ class Session:
             return
         if voice.is_stop(transcript):
             self.ring_bell("spoken")
+            self._speak("As you were, sir.")
             return
-        self.ask(transcript)
+        self._speak(f"I heard: {transcript}. Yes to proceed, sir.")
+        self.emit(type="state", state="listening")
+        try:
+            confirmed = voice.heard_confirmation()
+        finally:
+            self.emit(type="state", state="idle")
+        if not confirmed:
+            self.ledger.record(event="voice_declined", transcript=transcript)
+            self.say("No confirmation — standing down.")
+            self._speak("As you were, sir.")
+            return
+        self.ask(transcript, spoken=True)
 
     def ring_bell(self, source: str) -> None:
         self.executor.abort.set()
