@@ -30,6 +30,7 @@ from .ledger import Ledger
 from .registry import REGISTRY
 from .undo import UndoManager
 from .validator import Refusal, validate_plan
+from .webpage import PAGE
 
 ANNOUNCE_SECONDS = 2.0
 
@@ -95,6 +96,7 @@ class Session:
 
     def ask(self, utterance: str) -> None:
         try:
+            self.emit(type="state", state="working")
             if self._resolver is not None:
                 plan = self._resolver(utterance, self.ledger)
             else:
@@ -111,11 +113,17 @@ class Session:
             self.say(str(refusal))
         except Exception as error:  # the service never dies mid-request
             self.say(f"My apologies, sir — {type(error).__name__}: {error}")
+        finally:
+            self.emit(type="state", state="idle")
 
     def hear(self) -> None:
         from . import voice
+        self.emit(type="state", state="listening")
         self.say("Listening, sir (5 seconds)…")
-        transcript = voice.transcribe(voice.record())
+        try:
+            transcript = voice.transcribe(voice.record())
+        finally:
+            self.emit(type="state", state="idle")
         self.say(f'Heard: "{transcript}"')
         if not transcript:
             return
@@ -261,91 +269,12 @@ def main() -> int:
     server = make_server(session, token)
     port = server.server_address[1]
     url = f"http://127.0.0.1:{port}/?t={token}"
-    print(f"At your service: {url}")
-    print("(the token is this session's key — the page keeps it; Ctrl+C dismisses me)")
+    print(f"At your service: {url}", flush=True)
+    print("(the token is this session's key — the page keeps it; Ctrl+C dismisses me)",
+          flush=True)
     webbrowser.open(url)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     return 0
-
-
-PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Alfred</title>
-<style>
- body { background:#16161e; color:#e6e0cf; font:14px 'Segoe UI',sans-serif;
-        max-width:640px; margin:2rem auto; padding:0 1rem; }
- h1 { color:#e0c060; font-size:1rem; letter-spacing:.2em; }
- #log { background:#101018; border:1px solid #2a2a38; border-radius:8px;
-        padding:.8rem; height:300px; overflow-y:auto; font:12px Consolas,monospace;
-        white-space:pre-wrap; }
- #bar { display:flex; gap:.5rem; margin:.8rem 0; }
- input[type=text] { flex:1; background:#22222e; color:#e6e0cf; border:1px solid #2a2a38;
-        border-radius:6px; padding:.6rem; font-size:14px; }
- button { background:#2a2a38; color:#e6e0cf; border:0; border-radius:6px;
-        padding:.6rem .9rem; cursor:pointer; }
- button:hover { background:#3a3a4c; }
- #bell { background:#4a2a2a; }
- .gate { background:#221e14; border:1px solid #e0c060; border-radius:8px;
-        padding:.6rem .8rem; margin:.6rem 0; display:flex; gap:.6rem;
-        align-items:center; justify-content:space-between; }
- .dim { color:#8a8677; } label { color:#8a8677; font-size:12px; }
-</style></head><body>
-<h1>ALFRED — AT YOUR SERVICE</h1>
-<div id="log"></div><div id="gates"></div>
-<div id="bar">
- <input id="text" type="text" placeholder="Ask, sir… (Enter)" autofocus>
- <button id="mic" title="push-to-talk (5s)">&#127908;</button>
- <button id="bell" title="the bell — abort">&#128276;</button>
-</div>
-<div id="bar">
- <button data-cmd="menu">menu</button><button data-cmd="undo">undo</button>
- <button data-cmd="ledger">ledger</button><button data-cmd="burn">burn</button>
- <label><input type="checkbox" id="motion"> motion stop-bell (webcam rings the bell on a big wave — never commands)</label>
-</div>
-<p class="dim">text · audio (mic button) · hotkey (Ctrl+Alt+C summons this page) · motion (opt-in bell)</p>
-<script>
-const TOKEN = "__TOKEN__";
-const log = document.getElementById("log");
-function say(t){ log.textContent += t + "\\n"; log.scrollTop = log.scrollHeight; }
-function post(path, body){ return fetch(path, {method:"POST",
-  headers:{"Authorization":"Bearer "+TOKEN,"Content-Type":"application/json"},
-  body:JSON.stringify(body||{})}); }
-const gates = document.getElementById("gates");
-function gateCard(e){
-  const card = document.createElement("div"); card.className = "gate"; card.id = "g"+e.id;
-  const label = document.createElement("span");
-  const buttons = document.createElement("span");
-  if (e.kind === "announce"){
-    let left = e.seconds;
-    label.textContent = `If I may (${left.toFixed(0)}s): ${e.summary}`;
-    const timer = setInterval(()=>{ left -= 0.25;
-      if(left <= 0){ clearInterval(timer); card.remove(); }
-      else label.textContent = `If I may (${Math.ceil(left)}s): ${e.summary}`; }, 250);
-    const cancel = document.createElement("button"); cancel.textContent = "Belay that";
-    cancel.onclick = ()=>{ clearInterval(timer); post("/api/gate",{id:e.id,go:false}); card.remove(); };
-    buttons.append(cancel);
-  } else {
-    label.textContent = `By your leave, sir: ${e.summary}`;
-    for (const [text, go] of [["Go ahead", true], ["Not now", false]]){
-      const b = document.createElement("button"); b.textContent = text;
-      b.onclick = ()=>{ post("/api/gate",{id:e.id,go}); card.remove(); };
-      buttons.append(b);
-    }
-  }
-  card.append(label, buttons); gates.append(card);
-}
-const events = new EventSource("/api/events?t="+TOKEN);
-events.onmessage = (m)=>{ const e = JSON.parse(m.data);
-  if (e.type === "say") say(e.text);
-  else if (e.type === "gate") gateCard(e);
-  else if (e.type === "gate_done"){ const c = document.getElementById("g"+e.id); if(c) c.remove(); } };
-const text = document.getElementById("text");
-text.addEventListener("keydown",(k)=>{ if(k.key==="Enter" && text.value.trim()){
-  say("> "+text.value.trim()); post("/api/ask",{text:text.value.trim()}); text.value=""; }});
-document.getElementById("mic").onclick = ()=>post("/api/voice");
-document.getElementById("bell").onclick = ()=>post("/api/bell");
-document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>post("/api/command",{name:b.dataset.cmd}));
-document.getElementById("motion").onchange = (e)=>post("/api/motion",{enable:e.target.checked});
-say("Good day, sir. The services are at your disposal.");
-</script></body></html>"""
