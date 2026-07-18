@@ -1,4 +1,4 @@
-"""House configuration: the folders, apps, and settings Carson may touch.
+"""House configuration: the folders, apps, and settings Alfred may touch.
 
 Everything here is an allowlist. Absence means refusal — adapters never
 consult this module; by the time an adapter runs, the validator has already
@@ -31,4 +31,4 @@ MAX_PLAN_STEPS = 10
 MAX_PLAN_BYTES = 20_000
 MAX_CLIPBOARD_CHARS = 10_000
 
-DATA_DIR = Path.home() / ".carson"
+DATA_DIR = Path.home() / ".alfred"

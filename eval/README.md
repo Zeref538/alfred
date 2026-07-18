@@ -1,6 +1,6 @@
 # The examination — frozen eval set
 
-Carson's headline numbers come from **one** benchmark, defined here, and the
+Alfred's headline numbers come from **one** benchmark, defined here, and the
 methodology is the point: the test set is written *before* any planner
 prompt exists, so the planner can never be tuned to its own exam.
 

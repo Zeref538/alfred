@@ -2,13 +2,13 @@
 
 import pytest
 
-from carson.adapters import build_adapters
-from carson.executor import Executor
-from carson.ledger import Ledger
-from carson.palette import _parse_kv, run_plan
-from carson.registry import REGISTRY
-from carson.undo import UndoManager
-from carson.validator import Refusal
+from alfred.adapters import build_adapters
+from alfred.executor import Executor
+from alfred.ledger import Ledger
+from alfred.palette import _parse_kv, run_plan
+from alfred.registry import REGISTRY
+from alfred.undo import UndoManager
+from alfred.validator import Refusal
 
 
 def test_every_menu_item_has_an_adapter():

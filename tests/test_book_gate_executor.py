@@ -6,12 +6,12 @@ import time
 
 import pytest
 
-import carson.executor as executor_mod
-from carson.executor import Executor, StepResult
-from carson.gate import Etiquette, clear_plan
-from carson.ledger import Ledger
-from carson.undo import RevertHandle, UndoManager
-from carson.validator import Refusal, validate_plan
+import alfred.executor as executor_mod
+from alfred.executor import Executor, StepResult
+from alfred.gate import Etiquette, clear_plan
+from alfred.ledger import Ledger
+from alfred.undo import RevertHandle, UndoManager
+from alfred.validator import Refusal, validate_plan
 
 
 def steps_for(*items: dict):

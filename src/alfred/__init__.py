@@ -1,4 +1,4 @@
-"""Carson — a proper butler for your PC.
+"""Alfred — a proper butler for your PC.
 
 The trust architecture in one sentence: an LLM may only *propose* a plan as
 strict JSON over a fixed action menu; a deterministic validator and tier gate

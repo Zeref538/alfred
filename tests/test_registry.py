@@ -1,7 +1,7 @@
 import json
 
-from carson.registry import REGISTRY, Tier
-from carson.validator import plan_tier, validate_plan
+from alfred.registry import REGISTRY, Tier
+from alfred.validator import plan_tier, validate_plan
 
 
 def test_menu_is_frozen_at_twelve_actions():

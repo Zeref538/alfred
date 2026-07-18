@@ -1,6 +1,6 @@
 """Media keys via the OS virtual-key interface.
 
-These are Carson's *own* deterministic key taps for the four media controls —
+These are Alfred's *own* deterministic key taps for the four media controls —
 the planner still cannot emit arbitrary keystrokes; only these fixed codes
 exist, chosen by validated enum.
 
