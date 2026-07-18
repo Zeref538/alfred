@@ -1,7 +1,7 @@
 """Undo manager: a LIFO stack of revert handles from reversible actions.
 
 Adapters that change state return a RevertHandle capturing how to put things
-back; "Carson, undo that" pops and runs the most recent one.
+back; "Alfred, undo that" pops and runs the most recent one.
 """
 
 from dataclasses import dataclass

@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from carson.customs import DEFAULT_CUSTOMS, HouseCustoms
-from carson.validator import validate_plan
+from alfred.customs import DEFAULT_CUSTOMS, HouseCustoms
+from alfred.validator import validate_plan
 
 
 @pytest.fixture
@@ -49,6 +49,6 @@ def test_user_customs_still_face_the_validator(tmp_path):
         encoding="utf-8")
     plan = HouseCustoms(path=tmp_path / "customs.yaml").match("do the thing")
     assert plan is not None
-    from carson.validator import Refusal
+    from alfred.validator import Refusal
     with pytest.raises(Refusal):
         validate_plan(plan)

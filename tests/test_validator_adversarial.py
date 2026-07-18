@@ -10,8 +10,8 @@ import json
 
 import pytest
 
-from carson import config
-from carson.validator import PlanStep, Refusal, validate_plan
+from alfred import config
+from alfred.validator import PlanStep, Refusal, validate_plan
 
 
 def plan(*steps: dict) -> str:

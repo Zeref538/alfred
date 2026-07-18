@@ -13,7 +13,7 @@ def build_icon():
     draw.text((25, 20), "C", fill="#e0c060")
 
     return pystray.Icon(
-        "carson", image, "Carson — at your service",
+        "alfred", image, "Alfred — at your service",
         menu=pystray.Menu(
             pystray.MenuItem("Summon the palette", lambda: open_palette()),
             pystray.MenuItem("Dismiss", lambda icon: icon.stop()),

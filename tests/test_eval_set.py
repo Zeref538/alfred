@@ -5,7 +5,7 @@ would mean the exam is wrong, not the butler."""
 import json
 from pathlib import Path
 
-from carson.validator import validate_plan
+from alfred.validator import validate_plan
 
 DRAFT = Path(__file__).parent.parent / "eval" / "frozen_set.draft.jsonl"
 
