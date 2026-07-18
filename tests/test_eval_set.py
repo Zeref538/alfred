@@ -7,7 +7,7 @@ from pathlib import Path
 
 from alfred.validator import validate_plan
 
-DRAFT = Path(__file__).parent.parent / "eval" / "frozen_set.draft.jsonl"
+DRAFT = Path(__file__).parent.parent / "eval" / "frozen_set.jsonl"
 
 
 def load():
