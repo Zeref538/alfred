@@ -104,6 +104,14 @@ def test_tier1_cancel_refuses():
         clear_plan(steps_for(VOLUME), etiquette)
 
 
+def test_spoken_description_uses_summaries_not_signatures():
+    from alfred.gate import describe_spoken
+    steps = steps_for(VOLUME, SEARCH)
+    spoken = describe_spoken(steps)
+    assert spoken == ("Set the master volume (0-100) — 30; "
+                      "then Run a web search in the browser — hello")
+
+
 def test_tier2_gates_whole_plan_once_at_highest_tier():
     etiquette, log = gate(confirm=False)
     with pytest.raises(Refusal):
