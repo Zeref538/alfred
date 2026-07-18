@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "carson"
+version = "0.1.0"
+description = "A proper butler for your PC — local agentic assistant with a deterministic safety gate"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.12",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+carson = "carson.palette:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
