@@ -68,6 +68,25 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
  @keyframes landed { 0% { background:rgba(57,215,255,.35); text-shadow:0 0 14px var(--cy); }
                      100% { background:transparent; } }
  #reactor.blip { animation:pulse .25s ease-in-out 3; }
+ #reactor.speaking { background:radial-gradient(circle, #eafff0 0%, #9fffcf 18%,
+        #2be08a 45%, rgba(9,60,40,.9) 70%);
+        box-shadow:0 0 14px rgba(43,224,138,.5), 0 0 40px rgba(43,224,138,.3); }
+
+ /* the voice visualiser — amber bars when hearing you, green when speaking */
+ #viz { display:flex; align-items:flex-end; gap:3px; height:24px; }
+ #viz i { width:3px; height:5px; background:var(--cy-dim); border-radius:2px; }
+ #viz.listening i { background:var(--amber); animation:bounce .8s ease-in-out infinite; }
+ #viz.speaking i { background:#2be08a; animation:bounce .5s ease-in-out infinite; }
+ #viz i:nth-child(2){ animation-delay:.10s } #viz i:nth-child(3){ animation-delay:.22s }
+ #viz i:nth-child(4){ animation-delay:.32s } #viz i:nth-child(5){ animation-delay:.16s }
+ #viz i:nth-child(6){ animation-delay:.26s } #viz i:nth-child(7){ animation-delay:.06s }
+ @keyframes bounce { 0%,100%{ height:5px } 50%{ height:22px } }
+
+ /* the live subtitle — what Alfred is hearing, big enough to check at a glance */
+ #subtitle { min-height:1.5rem; margin:.1rem 0 .7rem; text-align:center;
+        font-size:1.05rem; letter-spacing:.03em; color:#dff6ff;
+        text-shadow:0 0 8px var(--cy-glow); transition:opacity .2s; }
+ #subtitle:empty { display:none; }
 
  .gate { border:1px solid var(--amber); background:rgba(40,28,6,.5);
       padding:.6rem .8rem; margin:.6rem 0; display:flex; gap:.8rem;
@@ -112,7 +131,9 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
    <h1>ALFRED</h1>
    <div id="status">systems <b id="state">nominal</b> · the gate is watching</div>
   </div>
+  <div id="viz" style="margin-left:auto"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
  </header>
+ <div id="subtitle"></div>
  <div id="log"></div><div id="gates"></div>
  <div id="bar">
   <input id="text" type="text" placeholder="your word is my command, sir…" autofocus>
@@ -136,6 +157,8 @@ const TOKEN = "__TOKEN__";
 const log = document.getElementById("log");
 const reactor = document.getElementById("reactor");
 const stateEl = document.getElementById("state");
+const viz = document.getElementById("viz");
+const subtitle = document.getElementById("subtitle");
 function say(t, me, flash){ const line = document.createElement("div");
   if (me) line.className = "me";
   if (flash){ line.className = "act";
@@ -148,7 +171,10 @@ function post(path, body){ return fetch(path, {method:"POST",
   body:JSON.stringify(body||{})}); }
 function setState(s){
   reactor.className = s === "idle" ? "" : s;
-  stateEl.textContent = s === "idle" ? "nominal" : s; }
+  stateEl.textContent = s === "idle" ? "nominal" : s;
+  viz.className = (s === "listening" || s === "speaking") ? s : "";
+  if (s === "listening") subtitle.textContent = "";  // a fresh turn begins
+}
 const gates = document.getElementById("gates");
 function gateCard(e){
   const card = document.createElement("div"); card.className = "gate"; card.id = "g"+e.id;
@@ -179,6 +205,7 @@ function gateCard(e){
 const events = new EventSource("/api/events?t="+TOKEN);
 events.onmessage = (m)=>{ const e = JSON.parse(m.data);
   if (e.type === "say") say(e.text, false, e.flash);
+  else if (e.type === "subtitle") subtitle.textContent = e.text ? ("“" + e.text + "”") : "";
   else if (e.type === "state") setState(e.state);
   else if (e.type === "gate") gateCard(e);
   else if (e.type === "gate_done"){ const c = document.getElementById("g"+e.id); if(c) c.remove(); } };
