@@ -4,10 +4,33 @@ Everything the page can do goes through the token-guarded API in web.py;
 restyling this file can never widen the attack surface.
 """
 
+# The crest: a butler's bowtie inside a hex ring — service inside engineering.
+# Inline SVG and a data-URI favicon, so the page stays entirely self-contained.
+LOGO = ("<svg class='crest' viewBox='0 0 64 64' aria-hidden='true'>"
+        "<polygon points='32,3 58,17 58,47 32,61 6,47 6,17' fill='none' "
+        "stroke='currentColor' stroke-width='2.5'/>"
+        "<circle cx='32' cy='32' r='19' fill='none' stroke='currentColor' "
+        "stroke-width='1' stroke-dasharray='3 4' opacity='.55'/>"
+        "<path d='M32 32 L18 23 L18 41 Z' fill='currentColor'/>"
+        "<path d='M32 32 L46 23 L46 41 Z' fill='currentColor'/>"
+        "<circle cx='32' cy='32' r='4' fill='#eaffff'/></svg>")
+
+FAVICON = ("data:image/svg+xml;utf8,"
+           "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+           "<polygon points='32,3 58,17 58,47 32,61 6,47 6,17' fill='none' "
+           "stroke='%2339d7ff' stroke-width='4'/>"
+           "<path d='M32 32 L18 23 L18 41 Z' fill='%2339d7ff'/>"
+           "<path d='M32 32 L46 23 L46 41 Z' fill='%2339d7ff'/>"
+           "<circle cx='32' cy='32' r='4' fill='%23eaffff'/></svg>")
+
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ALFRED</title>
+<link rel="icon" href="__FAVICON__">
 <style>
+ .crest { width:26px; height:26px; color:var(--cy); flex:none;
+        filter:drop-shadow(0 0 6px var(--cy-glow)); }
+ .wordmark { display:flex; align-items:center; gap:.55rem; }
  :root { --cy:#39d7ff; --cy-dim:#1a7fa0; --cy-glow:rgba(57,215,255,.45);
          --amber:#ffb02e; --red:#ff5a49; --ink:#04080f; }
  * { box-sizing:border-box; margin:0; }
@@ -128,7 +151,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
  <header>
   <div id="reactor"></div>
   <div>
-   <h1>ALFRED</h1>
+   <div class="wordmark">__LOGO__<h1>ALFRED</h1></div>
    <div id="status">systems <b id="state">nominal</b> · the gate is watching</div>
   </div>
   <div id="viz" style="margin-left:auto"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -240,39 +263,69 @@ say("Good day, sir. All systems at your disposal.");
 SETTINGS_PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ALFRED — settings</title>
+<link rel="icon" href="__FAVICON__">
 <style>
  :root { --cy:#39d7ff; --cy-dim:#1a7fa0; --cy-glow:rgba(57,215,255,.45);
          --amber:#ffb02e; --ink:#04080f; }
  * { box-sizing:border-box; margin:0; }
  body { background:radial-gradient(1200px 700px at 50% -10%, #0a1a2b 0%, var(--ink) 60%),
-        var(--ink); color:var(--cy); font:14px Consolas, monospace;
-        display:flex; justify-content:center; padding:2rem 1rem; }
- #frame { width:min(720px,100%); border:1px solid rgba(57,215,255,.25);
-        background:rgba(4,10,18,.85); padding:1.6rem;
-        box-shadow:0 0 40px rgba(57,215,255,.08); }
+        var(--ink); color:var(--cy); font:14px Consolas, 'Cascadia Mono', monospace;
+        min-height:100vh; display:flex; justify-content:center; padding:2rem 1rem; }
+ body::before { content:""; position:fixed; inset:0; pointer-events:none;
+        background:repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px,
+        transparent 1px 3px); mix-blend-mode:overlay; }
+ body::after { content:""; position:fixed; inset:0; pointer-events:none;
+        background:
+        linear-gradient(rgba(57,215,255,.05) 1px, transparent 1px) 0 0/100% 48px,
+        linear-gradient(90deg, rgba(57,215,255,.05) 1px, transparent 1px) 0 0/48px 100%; }
+ #frame { width:min(720px,100%); position:relative; align-self:flex-start;
+        border:1px solid rgba(57,215,255,.25);
+        background:rgba(4,10,18,.85); backdrop-filter:blur(2px); padding:1.6rem;
+        box-shadow:0 0 40px rgba(57,215,255,.08), inset 0 0 60px rgba(57,215,255,.04); }
+ .corner { position:absolute; width:22px; height:22px; border:2px solid var(--cy);
+        filter:drop-shadow(0 0 4px var(--cy-glow)); }
+ .tl { top:-2px; left:-2px; border-right:0; border-bottom:0; }
+ .tr { top:-2px; right:-2px; border-left:0; border-bottom:0; }
+ .bl { bottom:-2px; left:-2px; border-right:0; border-top:0; }
+ .br { bottom:-2px; right:-2px; border-left:0; border-top:0; }
+ .crest { width:30px; height:30px; color:var(--cy); flex:none;
+        filter:drop-shadow(0 0 6px var(--cy-glow)); }
+ header { display:flex; align-items:center; gap:.7rem; margin-bottom:1.2rem;
+        padding-bottom:.9rem; border-bottom:1px solid rgba(57,215,255,.18); }
  h1 { font-size:1rem; letter-spacing:.45em; color:#d9f6ff;
-        text-shadow:0 0 8px var(--cy-glow); margin-bottom:1rem; }
- h2 { font-size:.75rem; letter-spacing:.3em; color:var(--cy-dim);
-        margin:1.2rem 0 .5rem; text-transform:uppercase; }
- .row { display:flex; gap:.6rem; align-items:center; margin:.4rem 0; }
- .row label { width:180px; color:var(--cy-dim); font-size:.75rem;
+        text-shadow:0 0 8px var(--cy-glow); }
+ h2 { font-size:.72rem; letter-spacing:.3em; color:var(--cy-dim);
+        margin:1.5rem 0 .6rem; text-transform:uppercase;
+        display:flex; align-items:center; gap:.6rem; }
+ h2::after { content:""; flex:1; height:1px; background:rgba(57,215,255,.18); }
+ .row { display:flex; gap:.6rem; align-items:center; margin:.45rem 0; }
+ .row label { width:190px; color:var(--cy-dim); font-size:.72rem;
         letter-spacing:.1em; text-transform:uppercase; }
  input, select, textarea { background:rgba(6,14,24,.9); color:#e9fbff;
-        border:1px solid rgba(57,215,255,.35); padding:.45rem .6rem;
-        font:inherit; outline:none; flex:1; }
+        border:1px solid rgba(57,215,255,.35); padding:.5rem .65rem;
+        font:inherit; outline:none; flex:1; transition:border-color .15s, box-shadow .15s; }
+ input:focus, select:focus, textarea:focus { border-color:var(--cy);
+        box-shadow:0 0 12px rgba(57,215,255,.25); }
  textarea { width:100%; height:260px; white-space:pre; font-size:12px; }
  button { background:transparent; color:var(--cy); font:inherit; cursor:pointer;
         border:1px solid rgba(57,215,255,.45); padding:.55rem .9rem;
         letter-spacing:.12em; text-transform:uppercase; font-size:.72rem;
+        transition:background .15s, box-shadow .15s;
         clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),
                           calc(100% - 8px) 100%,0 100%,0 8px); }
  button:hover { background:rgba(57,215,255,.08); box-shadow:0 0 14px var(--cy-glow); }
- #status { margin-top:.8rem; color:var(--amber); font-size:.75rem; min-height:1.2em;
+ #save { border-color:var(--amber); color:var(--amber); }
+ #save:hover { background:rgba(255,176,46,.08); box-shadow:0 0 14px rgba(255,176,46,.45); }
+ #status { margin-top:.9rem; color:var(--amber); font-size:.75rem; min-height:1.2em;
         text-shadow:0 0 6px rgba(255,176,46,.4); }
- .hintline { color:var(--cy-dim); font-size:.65rem; margin:.3rem 0 0;
+ .hintline { color:var(--cy-dim); font-size:.65rem; margin:.3rem 0 .5rem;
         letter-spacing:.08em; }
 </style></head><body><div id="frame">
- <h1>ALFRED — SETTINGS</h1>
+ <span class="corner tl"></span><span class="corner tr"></span>
+ <span class="corner bl"></span><span class="corner br"></span>
+ <header>__LOGO__<h1>ALFRED</h1>
+  <span style="margin-left:auto;color:var(--cy-dim);font-size:.65rem;
+        letter-spacing:.2em;text-transform:uppercase">settings</span></header>
  <h2>Voice &amp; hearing</h2>
  <div class="row"><label>voice pace (0.7–1.6)</label>
   <input id="voice_pace" type="number" step="0.02" min="0.7" max="1.6"></div>
@@ -320,3 +373,8 @@ document.getElementById("vocab").onclick = async ()=>{
   await post("/api/rescan", {what:"vocab"}); status("Bookmarks relearned."); };
 document.getElementById("back").onclick = ()=>{ location.href = "/?t="+TOKEN; };
 </script></body></html>"""
+
+
+# the crest and favicon are static — bake them in once, at import
+PAGE = PAGE.replace("__LOGO__", LOGO).replace("__FAVICON__", FAVICON)
+SETTINGS_PAGE = SETTINGS_PAGE.replace("__LOGO__", LOGO).replace("__FAVICON__", FAVICON)
