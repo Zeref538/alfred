@@ -146,9 +146,28 @@ def correct(utterance: str) -> str:
 
 _OPEN_VERBS = re.compile(r"^(?:open|go to|visit|show me|take me to)\s+(?:the\s+)?(.+)$")
 
+# Well-known destinations, so "open youtube" opens reliably and instantly
+# without asking the small local model to remember a domain. The user's own
+# bookmarks always take precedence over these.
+_COMMON_SITES = {
+    "youtube": "https://youtube.com", "github": "https://github.com",
+    "google": "https://google.com", "gmail": "https://mail.google.com",
+    "maps": "https://maps.google.com", "drive": "https://drive.google.com",
+    "reddit": "https://reddit.com", "twitter": "https://twitter.com",
+    "x": "https://x.com", "facebook": "https://facebook.com",
+    "instagram": "https://instagram.com", "linkedin": "https://linkedin.com",
+    "netflix": "https://netflix.com", "spotify": "https://open.spotify.com",
+    "twitch": "https://twitch.tv", "amazon": "https://amazon.com",
+    "wikipedia": "https://wikipedia.org", "stackoverflow": "https://stackoverflow.com",
+    "stack overflow": "https://stackoverflow.com", "chatgpt": "https://chatgpt.com",
+    "discord": "https://discord.com/app", "whatsapp": "https://web.whatsapp.com",
+}
+
 
 def site_lookup(utterance: str) -> str | None:
-    """'open my portfolio' -> the bookmarked URL, if the name is close enough."""
+    """'open my portfolio' / 'open youtube' -> a URL. The user's bookmarks are
+    tried first (their names win), then a table of well-known sites — both
+    fuzzy, so a small mishear still lands."""
     said = re.sub(r"[^a-z0-9 ]", "", utterance.lower()).strip()
     match = _OPEN_VERBS.match(said)
     if not match:
@@ -156,4 +175,9 @@ def site_lookup(utterance: str) -> str | None:
     wanted = match.group(1).strip()
     sites = load().get("sites", {})
     hit = get_close_matches(wanted, list(sites), n=1, cutoff=0.8)
-    return sites[hit[0]] if hit else None
+    if hit:
+        return sites[hit[0]]
+    if wanted in _COMMON_SITES:
+        return _COMMON_SITES[wanted]
+    near = get_close_matches(wanted, list(_COMMON_SITES), n=1, cutoff=0.85)
+    return _COMMON_SITES[near[0]] if near else None
