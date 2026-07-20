@@ -13,6 +13,13 @@ without the global chord and the in-page J+K still works.
 HOLD_KEYS = ("j", "k")
 
 
+def hold_keys() -> tuple:
+    """The configured hold-to-talk chord, e.g. ('j', 'k'). Falls back to J+K."""
+    from . import settings
+    parts = [k.strip().lower() for k in settings.get("hold_keys").split("+") if k.strip()]
+    return tuple(parts) if len(parts) >= 2 else HOLD_KEYS
+
+
 class Chord:
     """A simultaneous-hold detector, independent of any input library so it can
     be tested: feed it press()/release() names, it calls on_start when every key
@@ -55,6 +62,6 @@ def watch(on_start, on_stop) -> None:
     any slow work (recording, transcription) in a thread so the system-wide
     keyboard hook is never blocked."""
     import keyboard
-    chord = Chord(HOLD_KEYS, on_start, on_stop)
+    chord = Chord(hold_keys(), on_start, on_stop)
     keyboard.on_press(lambda e: chord.press((e.name or "").lower()))
     keyboard.on_release(lambda e: chord.release((e.name or "").lower()))
