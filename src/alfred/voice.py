@@ -199,6 +199,12 @@ def is_mute(transcript: str) -> bool:
     return "mute" in set(re.sub(r"[^a-z ]", "", transcript.lower()).split())
 
 
+def is_undo(transcript: str) -> bool:
+    """'undo' / 'undo that' / 'undo the last one' — revert the last command."""
+    words = re.sub(r"[^a-z ]", "", transcript.lower()).split()
+    return "undo" in words and len(words) <= 4
+
+
 def is_yes(transcript: str) -> bool:
     """A spoken confirmation. Anything negative wins over anything positive —
     a mishear must never confirm itself."""

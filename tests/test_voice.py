@@ -63,6 +63,19 @@ def test_ordinary_speech_is_not_a_mute(heard):
     assert not is_mute(heard) and not is_unmute(heard)
 
 
+@pytest.mark.parametrize("heard", ["undo", "Undo.", "undo that", "undo the last one"])
+def test_undo_word_is_caught(heard):
+    from alfred.voice import is_undo
+    assert is_undo(heard)
+
+
+@pytest.mark.parametrize("heard", [
+    "open my undo folder in the browser", "search how to undo a git commit", ""])
+def test_ordinary_speech_is_not_an_undo(heard):
+    from alfred.voice import is_undo
+    assert not is_undo(heard)
+
+
 def test_muted_session_stays_silent(monkeypatch, tmp_path):
     import alfred.voice as voice_mod
     from alfred.executor import Executor

@@ -122,6 +122,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
  <div id="cmds">
   <button data-cmd="menu">menu</button><button data-cmd="undo">undo</button>
   <button data-cmd="ledger">ledger</button><button data-cmd="burn">burn</button>
+  <button data-cmd="fieldlog" title="what you tested: mishears, refusals, errors">field log</button>
   <label title="webcam rings the stop bell on a big wave — never commands">
    <input type="checkbox" id="motion"> &#128247; motion bell</label>
   <span style="color:var(--cy-dim);font-size:.7rem;letter-spacing:.12em">
