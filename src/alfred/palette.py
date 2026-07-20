@@ -104,7 +104,13 @@ def _resolve_utterance(utterance: str, ledger: Ledger) -> str:
 def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
     from . import voice
     print("Push-to-talk: Enter, then speak (5s). Say 'Alfred, stop' to ring "
-          "the bell. Ctrl+C dismisses me.")
+          "the bell, 'mute'/'unmute' for my voice. Ctrl+C dismisses me.")
+    muted = [False]
+
+    def speak(text: str) -> None:  # honours the mute word
+        if not muted[0]:
+            voice.speak(text)
+
     while True:
         try:
             input("[Enter to speak] ")
@@ -118,7 +124,7 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
         if voice.is_stop(transcript):
             executor.abort.set()
             ledger.record(event="bell", transcript=transcript)
-            voice.speak("As you were, sir.")
+            speak("As you were, sir.")
             executor.abort.clear()
             continue
         # second hearing: the LLM repairs likely mishears from the vocabulary
@@ -127,6 +133,14 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
         if corrected != transcript:
             print(f'  taking that as: "{corrected}"')
         transcript = corrected
+        if voice.is_unmute(transcript):
+            muted[0] = False
+            voice.speak("Voice restored, sir.")
+            continue
+        if voice.is_mute(transcript):
+            muted[0] = True
+            print("  (voice muted — say 'unmute' to restore)")
+            continue
         # resolve first: the user approves the PLAN, not just the words
         from .gate import describe
         from .registry import Tier
@@ -135,7 +149,7 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
             steps = validate_plan(_resolve_utterance(transcript, ledger))
         except Refusal as refusal:
             print(refusal)
-            voice.speak(str(refusal))
+            speak(str(refusal))
             continue
         print("  he would:")  # shown, never spoken back
         for step in steps:
@@ -145,20 +159,20 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
             results = executor.run(steps, intent=transcript)
             for result in results:
                 print(f"  [{'ok' if result.ok else 'XX'}] {result.action}: {result.detail}")
-            voice.speak(voice.nod() if all(r.ok for r in results) else voice.apologize())
+            speak(voice.nod() if all(r.ok for r in results) else voice.apologize())
 
         def _decline() -> None:
-            voice.speak(voice.stand_down())
+            speak(voice.stand_down())
             ledger.record(event="voice_declined", transcript=transcript)
 
         tier = plan_tier(steps)
         if tier <= Tier.ANNOUNCED:  # read-only / reversible — just do it
             _run()
         elif tier is Tier.CONFIRM:
-            voice.speak("Shall I proceed, sir?")
+            speak("Shall I proceed, sir?")
             _run() if voice.heard_confirmation() else _decline()
         else:  # UNDER_SEAL — the spoken word can't carry the seal
-            voice.speak("That reaches your files, sir — type your approval.")
+            speak("That reaches your files, sir — type your approval.")
             typed = input(f'  type exactly "{SEAL_PHRASE}": ') if sys.stdin.isatty() else ""
             _run() if is_seal_phrase(typed) else _decline()
 
