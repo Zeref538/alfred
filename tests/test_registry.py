@@ -28,3 +28,16 @@ def test_plan_gates_at_highest_tier():
          "args": {"key": "app_theme", "value": "dark"}},               # tier 2
     ]}))
     assert plan_tier(steps) is Tier.CONFIRM
+
+
+def test_unknown_app_error_stays_short():
+    import json
+
+    import pytest
+
+    from alfred.validator import Refusal, validate_plan
+    with pytest.raises(Refusal) as err:
+        validate_plan(json.dumps(
+            {"plan": [{"action": "launch_app", "args": {"app": "nonesuch"}}]}))
+    message = str(err.value)
+    assert "nonesuch" in message and "known apps" not in message and len(message) < 200

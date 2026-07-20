@@ -152,6 +152,42 @@ def test_tier3_seal_needs_the_exact_phrase(server, tmp_path, monkeypatch):
     assert "opened" in server["hits"]
 
 
+def test_second_command_is_refused_while_busy(server):
+    session = server["session"]
+    session._turn.acquire()  # pretend a turn is already in flight
+    events = session.subscribe()
+    session.ask("volume 5")  # runs synchronously here, should bounce off the lock
+    session._turn.release()
+    said = []
+    while not events.empty():
+        e = events.get_nowait()
+        if e.get("type") == "say":
+            said.append(e["text"])
+    assert any("One moment" in s for s in said)
+    assert 5 not in server["hits"]  # the busy command never ran
+
+
+def test_last_window_closing_dismisses_him(monkeypatch, tmp_path):
+    import alfred.web as web
+    from alfred.executor import Executor
+    from alfred.ledger import Ledger
+    from alfred.undo import UndoManager
+    monkeypatch.setattr(web, "IDLE_GRACE_SECONDS", 0.05)
+    session = web.Session(executor=Executor({}, Ledger(root=tmp_path), UndoManager()))
+    dismissed = threading.Event()
+    session._on_idle = dismissed.set
+    q = session.subscribe()      # a window opens
+    session.unsubscribe(q)       # and closes — the last one
+    assert dismissed.wait(2), "closing the last window should dismiss him"
+
+
+def test_strip_wake_word():
+    from alfred.web import _strip_wake
+    assert _strip_wake("alfred open youtube") == "open youtube"
+    assert _strip_wake("Hey Alfred, search cats") == "search cats"
+    assert _strip_wake("open youtube") == "open youtube"
+
+
 def test_unknown_route_is_404(server):
     with pytest.raises(urllib.error.HTTPError) as error:
         call(server["port"], "/api/shell", body={"cmd": "dir"})

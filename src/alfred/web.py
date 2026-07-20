@@ -17,7 +17,9 @@ webcam *stop bell* — movement can only ever ring the bell, never command).
 """
 
 import json
+import os
 import queue
+import re
 import secrets
 import threading
 import webbrowser
@@ -38,6 +40,13 @@ _GRANTED = Etiquette(confirm=lambda s: True, seal=lambda s: True)
 GREETING = ("Good evening, sir. All systems are nominal. "
             "Alfred is online and at your service.")
 MAX_HOLD_SECONDS = 30  # a stuck key can't hold the mic open forever
+IDLE_GRACE_SECONDS = 3.0  # after the last window closes, dismiss himself
+
+_WAKE = re.compile(r"^\s*(?:hey\s+|ok\s+)?alfred[,:.\s]+", re.I)
+
+
+def _strip_wake(text: str) -> str:
+    return _WAKE.sub("", text).strip()
 
 
 class Session:
@@ -57,13 +66,38 @@ class Session:
         self._muted = False       # "mute" silences his voice; "unmute" restores it
         self._recorder = None     # hold-to-talk recorder, when a key is held
         self._hold_timer = None
+        self._turn = threading.Lock()  # one command at a time — no overlapping turns
+        self._on_idle = None      # called when the last window closes (self-dismiss)
+        self._ever_connected = False
+        self._idle_timer = None
 
     # --- events out to the page ---------------------------------------------
 
     def subscribe(self) -> queue.Queue:
         q: queue.Queue = queue.Queue()
         self._subscribers.append(q)
+        self._ever_connected = True
+        if self._idle_timer is not None:  # a window reappeared — stay awake
+            self._idle_timer.cancel()
+            self._idle_timer = None
         return q
+
+    def unsubscribe(self, q: queue.Queue) -> None:
+        if q in self._subscribers:
+            self._subscribers.remove(q)
+        # once a window has ever opened, closing the last one dismisses him
+        if (self._ever_connected and not self._subscribers
+                and self._on_idle and self._idle_timer is None):
+            self._idle_timer = threading.Timer(IDLE_GRACE_SECONDS, self._on_idle)
+            self._idle_timer.daemon = True
+            self._idle_timer.start()
+
+    def _try_begin(self) -> bool:
+        """Claim the single turn slot; refuse politely if he's already busy."""
+        if not self._turn.acquire(blocking=False):
+            self.say("One moment, sir — I'm still attending to the last request.")
+            return False
+        return True
 
     def emit(self, **event) -> None:
         for q in list(self._subscribers):
@@ -127,6 +161,8 @@ class Session:
             self._speak(apologize())
 
     def ask(self, utterance: str, spoken: bool = False) -> None:
+        if not self._try_begin():
+            return
         try:
             self.emit(type="state", state="working")
             self._execute(self._plan_for(utterance), utterance, self.etiquette(), spoken)
@@ -138,6 +174,7 @@ class Session:
             self.say(f"My apologies, sir — {type(error).__name__}: {error}")
         finally:
             self.emit(type="state", state="idle")
+            self._turn.release()
 
     def _speak(self, text: str) -> None:
         if self._muted:
@@ -158,24 +195,31 @@ class Session:
     def hear(self) -> None:
         """Fixed 5-second push-to-talk (the mic button)."""
         from . import voice
+        if not self._try_begin():
+            return
         self.emit(type="state", state="listening")
         self.say("Listening, sir (5 seconds)…")
         try:
             audio = voice.record()
-        finally:
             self.emit(type="state", state="idle")
-        self._process_audio(audio)
+            self._process_audio(audio)
+        finally:
+            self._turn.release()
 
     def hold_start(self) -> None:
-        """Open the mic and hold it — the HUD's hold-to-talk keys (J+K)."""
+        """Open the mic and hold it — the HUD's hold-to-talk keys (J+K). Holds
+        the turn lock until hold_stop, so a new command can't start mid-hold."""
         from . import voice
         if self._recorder is not None:
+            return
+        if not self._try_begin():
             return
         recorder = voice.Recorder()
         try:
             recorder.start()
         except Exception as error:
             self.say(f"My apologies, sir — the microphone won't open ({error}).")
+            self._turn.release()
             return
         self._recorder = recorder
         self.emit(type="state", state="listening")
@@ -190,10 +234,13 @@ class Session:
             self._hold_timer.cancel()
             self._hold_timer = None
         if recorder is None:
-            return
-        audio = recorder.stop()
-        self.emit(type="state", state="idle")
-        self._process_audio(audio)
+            return  # nothing held — the lock isn't ours to release
+        try:
+            audio = recorder.stop()
+            self.emit(type="state", state="idle")
+            self._process_audio(audio)
+        finally:
+            self._turn.release()
 
     def _process_audio(self, audio) -> None:
         """The mishear guard, shared by every listening path: transcribe, repair,
@@ -238,10 +285,10 @@ class Session:
             self.emit(type="state", state="working")
             self._pending_steps = self._plan_for(transcript)
         except Refusal as refusal:
-            self.say(str(refusal))
-            self._speak(str(refusal))
+            self.emit(type="state", state="idle")
             fieldlog.record(outcome="refusal", raw=raw, corrected=transcript,
                             detail=str(refusal))
+            self._offer_search_fallback(raw, transcript)  # don't dead-end — ask first
             return
         finally:
             self.emit(type="state", state="idle")
@@ -282,6 +329,32 @@ class Session:
         finally:
             self._pending_steps = None
             self.emit(type="state", state="idle")
+
+    def _offer_search_fallback(self, raw: str, transcript: str) -> None:
+        """When a spoken command makes no sense on the menu, don't just refuse
+        or guess — say so and ask to search it instead, executing only on a yes."""
+        from . import fieldlog, voice
+        query = _strip_wake(transcript)
+        if not query:
+            self.say("I didn't catch a command there, sir.")
+            self._speak("I didn't catch that, sir.")
+            return
+        self.say(f'I didn\'t quite follow, sir. Shall I search for "{query}"?')
+        self._speak(f"I didn't quite follow, sir. Shall I search for {query}?")
+        self.emit(type="state", state="listening")
+        try:
+            confirmed = voice.heard_confirmation()
+        finally:
+            self.emit(type="state", state="idle")
+        if not confirmed:
+            self.say("Very well, sir — I'll leave it.")
+            self._speak(voice.stand_down())
+            return
+        steps = validate_plan(json.dumps(
+            {"plan": [{"action": "web_search", "args": {"query": query}}]}))
+        fieldlog.record(outcome="fallback", raw=raw, corrected=transcript,
+                        detail=f"search: {query}")
+        self._execute(steps, transcript, _GRANTED, spoken=True)
 
     def ring_bell(self, source: str) -> None:
         self.executor.abort.set()
@@ -407,6 +480,8 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                         self.wfile.flush()
                 except OSError:
                     pass
+                finally:
+                    session.unsubscribe(q)  # last window gone → he dismisses himself
             else:
                 self._deny(404, "not on the menu")
 
@@ -486,14 +561,91 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
     return server
 
 
+def _lockfile():
+    from . import config
+    return config.DATA_DIR / "hud.lock"
+
+
+def _pid_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:  # Windows: OpenProcess succeeds only for a live PID
+        import ctypes
+        handle = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED
+        if handle:
+            ctypes.windll.kernel32.CloseHandle(handle)
+            return True
+        return False
+    except Exception:
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+
+
+def _running_instance():
+    """The URL of a live HUD from the lockfile, or None (clearing a stale lock)."""
+    lock = _lockfile()
+    if not lock.exists():
+        return None
+    try:
+        doc = json.loads(lock.read_text(encoding="utf-8"))
+    except Exception:
+        lock.unlink(missing_ok=True)
+        return None
+    if _pid_alive(int(doc.get("pid", 0))):
+        return doc.get("url", "an open window")
+    lock.unlink(missing_ok=True)  # the process is gone — the lock was stale
+    return None
+
+
+def stop_running() -> int:
+    """`alfred stop` — dismiss a HUD left running in the background."""
+    running = _running_instance()
+    if not running:
+        print("Alfred isn't running, sir.")
+        return 0
+    doc = json.loads(_lockfile().read_text(encoding="utf-8"))
+    pid = int(doc["pid"])
+    try:
+        import ctypes
+        handle = ctypes.windll.kernel32.OpenProcess(0x0001, False, pid)  # TERMINATE
+        if handle:
+            ctypes.windll.kernel32.TerminateProcess(handle, 0)
+            ctypes.windll.kernel32.CloseHandle(handle)
+    except Exception:
+        try:
+            os.kill(pid, 9)
+        except OSError:
+            pass
+    _lockfile().unlink(missing_ok=True)
+    print(f"Dismissed Alfred (PID {pid}), sir.")
+    return 0
+
+
 def main() -> int:
+    running = _running_instance()
+    if running:
+        print(f"Alfred is already at your service: {running}", flush=True)
+        print("Dismiss that one first — close its window, or run `alfred stop`.",
+              flush=True)
+        return 1
+
     token = secrets.token_urlsafe(24)
     session = Session()
     server = make_server(session, token)
     port = server.server_address[1]
     url = f"http://127.0.0.1:{port}/?t={token}"
+    session._on_idle = lambda: threading.Thread(
+        target=server.shutdown, daemon=True).start()  # last window closed → stop
+
+    lock = _lockfile()
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    lock.write_text(json.dumps({"pid": os.getpid(), "url": url}), encoding="utf-8")
+
     print(f"At your service: {url}", flush=True)
-    print("(the token is this session's key — the page keeps it; Ctrl+C dismisses me)",
+    print("(one instance at a time; closing the window dismisses me, as does `alfred stop`)",
           flush=True)
     from . import voice
 
@@ -506,4 +658,6 @@ def main() -> int:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        lock.unlink(missing_ok=True)
     return 0
