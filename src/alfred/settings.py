@@ -20,6 +20,8 @@ DEFAULTS: dict[str, str] = {
     "piper_voice": "en_GB-alan-medium",
     "model": "qwen3.5:2b",    # planner model (Ollama tag)
     "search": "https://www.google.com/search?q=",
+    "summon_hotkey": "ctrl+alt+c",  # global hotkey that opens the HUD
+    "hold_keys": "j+k",             # hold-to-talk chord (in-page and global)
 }
 
 
