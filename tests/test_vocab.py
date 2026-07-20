@@ -52,6 +52,22 @@ def test_site_lookup_fuzzy_matches_open_phrases(vocab_file, monkeypatch):
     assert vocab.site_lookup("open something unbookmarked") is None
 
 
+def test_common_sites_open_without_the_model(vocab_file, monkeypatch):
+    # no bookmarks — well-known sites still resolve deterministically
+    vocab.VOCAB_FILE.write_text("sites: {}\n", encoding="utf-8")
+    assert vocab.site_lookup("open youtube") == "https://youtube.com"
+    assert vocab.site_lookup("go to reddit") == "https://reddit.com"
+    assert vocab.site_lookup("open youtub") == "https://youtube.com"  # small mishear
+    assert vocab.site_lookup("open nature") is None       # unknown -> planner decides
+    assert vocab.site_lookup("what time is it") is None   # not an open phrase
+
+
+def test_bookmarks_win_over_common_sites(vocab_file, monkeypatch):
+    vocab.VOCAB_FILE.write_text(
+        "sites:\n  youtube: https://my.private.tube/home\n", encoding="utf-8")
+    assert vocab.site_lookup("open youtube") == "https://my.private.tube/home"
+
+
 def test_deterministic_correction_repairs_split_names(vocab_file, monkeypatch):
     monkeypatch.setattr("alfred.config.ALLOWED_APPS",
                         {"spotify": "x", "notepad": "y"})
