@@ -143,7 +143,11 @@ class Session:
         if self._muted:
             return
         from . import voice
-        voice.speak(text)
+        self.emit(type="state", state="speaking")  # the green visualiser
+        try:
+            voice.speak(text)
+        finally:
+            self.emit(type="state", state="idle")
 
     def greet(self) -> None:
         """The boot line — spoken once at startup (the page shows the text)."""
@@ -198,6 +202,7 @@ class Session:
         the typed seal (on the panel) for anything that reaches your files."""
         from . import fieldlog, voice
         raw = voice.transcribe(audio)
+        self.emit(type="subtitle", text=raw)  # what he heard, big on the panel
         self.say(f'Heard: "{raw}"')
         if not raw:
             fieldlog.record(outcome="empty", raw="")
@@ -205,6 +210,7 @@ class Session:
         from .planner import correct_transcript
         transcript = correct_transcript(raw)
         if transcript != raw:
+            self.emit(type="subtitle", text=transcript)
             self.say(f'Taking that as: "{transcript}"')
         if voice.is_stop(transcript):
             self.ring_bell("spoken")
