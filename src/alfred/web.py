@@ -196,28 +196,35 @@ class Session:
         honour the bell and the mute word, then show the plan and gate it by tier
         — nothing for read-only/reversible, a spoken yes for the consequential,
         the typed seal (on the panel) for anything that reaches your files."""
-        from . import voice
-        transcript = voice.transcribe(audio)
-        self.say(f'Heard: "{transcript}"')
-        if not transcript:
+        from . import fieldlog, voice
+        raw = voice.transcribe(audio)
+        self.say(f'Heard: "{raw}"')
+        if not raw:
+            fieldlog.record(outcome="empty", raw="")
             return
         from .planner import correct_transcript
-        corrected = correct_transcript(transcript)
-        if corrected != transcript:
-            self.say(f'Taking that as: "{corrected}"')
-            transcript = corrected
+        transcript = correct_transcript(raw)
+        if transcript != raw:
+            self.say(f'Taking that as: "{transcript}"')
         if voice.is_stop(transcript):
             self.ring_bell("spoken")
             self._speak(voice.stand_down())
+            fieldlog.record(outcome="bell", raw=raw, corrected=transcript)
+            return
+        if voice.is_undo(transcript):
+            self._undo_spoken()
+            fieldlog.record(outcome="undo", raw=raw, corrected=transcript)
             return
         if voice.is_unmute(transcript):
             self._muted = False
             self.say("Voice restored, sir.")
             self._speak("Voice restored, sir.")
+            fieldlog.record(outcome="unmute", raw=raw, corrected=transcript)
             return
         if voice.is_mute(transcript):
             self._muted = True
             self.say("Muted, sir — say 'unmute' to bring me back.")
+            fieldlog.record(outcome="mute", raw=raw, corrected=transcript)
             return
         # resolve first, so the user approves the PLAN, not just the words
         from .gate import describe
@@ -227,6 +234,8 @@ class Session:
         except Refusal as refusal:
             self.say(str(refusal))
             self._speak(str(refusal))
+            fieldlog.record(outcome="refusal", raw=raw, corrected=transcript,
+                            detail=str(refusal))
             return
         finally:
             self.emit(type="state", state="idle")
@@ -234,6 +243,8 @@ class Session:
         self.say("He would:")
         for step in self._pending_steps:
             self.say("  - " + describe(step))
+        fieldlog.record(outcome="plan", raw=raw, corrected=transcript,
+                        detail="; ".join(describe(s) for s in self._pending_steps))
         tier = plan_tier(self._pending_steps)
         try:
             if tier <= Tier.ANNOUNCED:  # nothing consequential — just do it
@@ -260,6 +271,8 @@ class Session:
             self._speak(str(refusal))
         except Exception as error:
             self.say(f"My apologies, sir — {type(error).__name__}: {error}")
+            fieldlog.record(outcome="error", raw=raw, corrected=transcript,
+                            detail=f"{type(error).__name__}: {error}")
         finally:
             self._pending_steps = None
             self.emit(type="state", state="idle")
@@ -270,15 +283,20 @@ class Session:
         self.say("As you were, sir. (the bell)")
         self.executor.abort.clear()
 
+    def _undo_spoken(self) -> None:
+        handle = self.undo.undo_last()
+        if handle is None:
+            self.say("Nothing to undo, sir.")
+            self._speak("Nothing to undo, sir.")
+        else:
+            self.ledger.record(event="undo", action=handle.action,
+                               detail=handle.description)
+            self.say(f"Undone: {handle.description}.")
+            self._speak("Undone, sir.")
+
     def command(self, name: str) -> None:
         if name == "undo":
-            handle = self.undo.undo_last()
-            if handle is None:
-                self.say("Nothing to undo, sir.")
-            else:
-                self.ledger.record(event="undo", action=handle.action,
-                                   detail=handle.description)
-                self.say(f"Undone: {handle.description}.")
+            self._undo_spoken()
         elif name == "menu":
             for spec in REGISTRY.values():
                 self.say(f"tier {int(spec.tier)} | {spec.name} — {spec.summary}")
@@ -288,6 +306,10 @@ class Session:
         elif name == "burn":
             self.ledger.burn_today()
             self.say("The day's page is ash, sir.")
+        elif name == "fieldlog":
+            from . import fieldlog
+            for line in fieldlog.summary().splitlines():
+                self.say(line)
         else:
             self.say(f"I don't recognise '{name}', sir.")
 
