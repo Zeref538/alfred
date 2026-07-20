@@ -16,9 +16,12 @@ REGISTRY_VERSION = 1
 
 
 class Tier(IntEnum):
-    AT_LIBERTY = 0  # read-only / instantly reversible: executes immediately
-    ANNOUNCED = 1  # state changes: announced with a cancelable notice
-    BY_YOUR_LEAVE = 2  # settings / files: explicit confirmation required
+    # The consent ladder — the higher the rung, the heavier the consent.
+    # A plan is gated once, at the highest tier any of its steps carries.
+    AT_LIBERTY = 0    # read-only / instantly reversible: runs at once, silently
+    ANNOUNCED = 1     # reversible state change: runs at once, flashed, undoable — no yes
+    CONFIRM = 2       # consequential: one plain yes (click "engage", say "yes")
+    UNDER_SEAL = 3    # reaches the filesystem: type exactly "yes i approve please proceed"
 
 
 @dataclass(frozen=True)
@@ -45,7 +48,7 @@ _SPECS = [
                "Set the master volume (0-100)"),
     ActionSpec("toggle_do_not_disturb", Tier.ANNOUNCED, True, schemas.ToggleDnd,
                "Mute or restore notifications"),
-    ActionSpec("open_file", Tier.BY_YOUR_LEAVE, False, schemas.OpenFile,
+    ActionSpec("open_file", Tier.UNDER_SEAL, False, schemas.OpenFile,
                "Open a file from a whitelisted folder"),
     ActionSpec("clipboard_read", Tier.AT_LIBERTY, False, schemas.NoArgs,
                "Read the clipboard (never fed to the planner)"),
@@ -53,7 +56,7 @@ _SPECS = [
                "Write text to the clipboard (previous contents snapshotted)"),
     ActionSpec("window_layout", Tier.ANNOUNCED, True, schemas.WindowLayout,
                "Arrange the focused window"),
-    ActionSpec("settings_change", Tier.BY_YOUR_LEAVE, True, schemas.SettingsChange,
+    ActionSpec("settings_change", Tier.CONFIRM, True, schemas.SettingsChange,
                "Change an allowlisted setting"),
 ]
 
