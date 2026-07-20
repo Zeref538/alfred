@@ -14,8 +14,10 @@
     alfred voice                      push-to-talk loop (needs the [voice] extra)
     alfred                            REPL — same commands, plus `undo`
 
-Consent on the console: Tier 1 plans are announced; Tier 2 plans require an
-explicit yes. Without a terminal to ask, pass --yes or Alfred declines.
+Consent on the console scales with the tier: Tiers 0-1 run at once (shown, not
+gated); Tier 2 asks a plain yes; Tier 3 (anything reaching your files) needs the
+phrase "yes i approve please proceed" typed exactly. --yes pre-answers Tier 2
+only — the seal is never pre-answered.
 """
 
 import json
@@ -23,7 +25,7 @@ import sys
 
 from .adapters import build_adapters
 from .executor import Executor
-from .gate import Etiquette, clear_plan
+from .gate import SEAL_PHRASE, Etiquette, clear_plan, is_seal_phrase
 from .ledger import Ledger
 from .registry import REGISTRY
 from .undo import UndoManager
@@ -31,10 +33,6 @@ from .validator import Refusal, validate_plan
 
 
 def _console_etiquette(preapproved: bool) -> Etiquette:
-    def announce(summary: str) -> bool:
-        print(f"If I may, sir: {summary}")
-        return True
-
     def confirm(summary: str) -> bool:
         if preapproved:
             print(f"By your leave (pre-approved): {summary}")
@@ -43,7 +41,14 @@ def _console_etiquette(preapproved: bool) -> Etiquette:
             return False
         return input(f"By your leave, sir — {summary} [y/N] ").strip().lower() == "y"
 
-    return Etiquette(announce=announce, confirm=confirm)
+    def seal(summary: str) -> bool:
+        # the top rung: --yes never opens it; only the phrase, typed, does
+        if not sys.stdin.isatty():
+            return False
+        print(f"This is sealed, sir — it reaches your files: {summary}")
+        return is_seal_phrase(input(f'Type exactly "{SEAL_PHRASE}" to proceed: '))
+
+    return Etiquette(confirm=confirm, seal=seal)
 
 
 def _parse_kv(pairs: list[str]) -> dict:
@@ -123,28 +128,39 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
             print(f'  taking that as: "{corrected}"')
         transcript = corrected
         # resolve first: the user approves the PLAN, not just the words
-        from .gate import clear_plan, describe, describe_spoken
+        from .gate import describe
+        from .registry import Tier
+        from .validator import plan_tier
         try:
             steps = validate_plan(_resolve_utterance(transcript, ledger))
         except Refusal as refusal:
             print(refusal)
             voice.speak(str(refusal))
             continue
-        print("  he would:")
+        print("  he would:")  # shown, never spoken back
         for step in steps:
             print("   - " + describe(step))
-        voice.speak(f"I shall {describe_spoken(steps)} — sir?")
-        print("  awaiting your yes…")
-        if not voice.heard_confirmation():
+
+        def _run() -> None:
+            results = executor.run(steps, intent=transcript)
+            for result in results:
+                print(f"  [{'ok' if result.ok else 'XX'}] {result.action}: {result.detail}")
+            voice.speak(voice.nod() if all(r.ok for r in results) else voice.apologize())
+
+        def _decline() -> None:
             voice.speak(voice.stand_down())
             ledger.record(event="voice_declined", transcript=transcript)
-            continue
-        # consent covered the exact plan; the tiers don't ask twice
-        results = executor.run(steps, intent=transcript)
-        for result in results:
-            print(f"  [{'ok' if result.ok else 'XX'}] {result.action}: {result.detail}")
-        ok = all(r.ok for r in results)
-        voice.speak(voice.nod() if ok else voice.apologize())
+
+        tier = plan_tier(steps)
+        if tier <= Tier.ANNOUNCED:  # read-only / reversible — just do it
+            _run()
+        elif tier is Tier.CONFIRM:
+            voice.speak("Shall I proceed, sir?")
+            _run() if voice.heard_confirmation() else _decline()
+        else:  # UNDER_SEAL — the spoken word can't carry the seal
+            voice.speak("That reaches your files, sir — type your approval.")
+            typed = input(f'  type exactly "{SEAL_PHRASE}": ') if sys.stdin.isatty() else ""
+            _run() if is_seal_phrase(typed) else _decline()
 
 
 def _menu() -> None:
