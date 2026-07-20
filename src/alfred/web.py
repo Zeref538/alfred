@@ -647,6 +647,17 @@ def main() -> int:
     print(f"At your service: {url}", flush=True)
     print("(one instance at a time; closing the window dismisses me, as does `alfred stop`)",
           flush=True)
+
+    from . import globalkeys
+    if globalkeys.available():
+        try:  # slow work in threads — never block the system-wide keyboard hook
+            globalkeys.watch(
+                lambda: threading.Thread(target=session.hold_start, daemon=True).start(),
+                lambda: threading.Thread(target=session.hold_stop, daemon=True).start())
+            print("Global J+K hold-to-talk armed — works from any window.", flush=True)
+        except Exception as error:
+            print(f"(global J+K unavailable: {error})", flush=True)
+
     from . import voice
 
     def _boot() -> None:
