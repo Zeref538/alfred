@@ -38,6 +38,10 @@ Rules:
 - Use the fewest steps that honestly fulfil the request.
 - A search is exactly one web_search step. NEVER invent URLs — use open_url
   only when the user names a site (then use its https:// domain).
+- "open <X>": if X is a well-known website, open_url its https:// domain;
+  otherwise web_search X. Use launch_app ONLY when X is EXACTLY one of the
+  registered application names listed below — never guess launch_app for a
+  word that isn't in that list.
 - "skip"/"next song" means media_control next; "pause"/"play" means
   play_pause; "previous" means previous.
 - If the request names something the menu can do, do it. Return {"plan": []}
@@ -49,6 +53,10 @@ user: launch notepad
 {"plan": [{"action": "launch_app", "args": {"app": "notepad"}}]}
 user: search for cheap flights to cebu
 {"plan": [{"action": "web_search", "args": {"query": "cheap flights to cebu"}}]}
+user: open youtube
+{"plan": [{"action": "open_url", "args": {"url": "https://youtube.com"}}]}
+user: open nature
+{"plan": [{"action": "web_search", "args": {"query": "nature"}}]}
 user: dark mode and volume to 40
 {"plan": [{"action": "settings_change", "args": {"key": "app_theme", "value": "dark"}},
           {"action": "set_volume", "args": {"level": 40}}]}

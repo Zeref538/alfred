@@ -57,9 +57,7 @@ class LaunchApp(Args):
     @classmethod
     def on_the_menu(cls, v: str) -> str:
         if v not in config.ALLOWED_APPS:
-            raise ValueError(
-                f"'{v}' is not on the menu; known apps: {sorted(config.ALLOWED_APPS)}"
-            )
+            raise ValueError(f"'{v}' is not a registered application")
         return v
 
 
