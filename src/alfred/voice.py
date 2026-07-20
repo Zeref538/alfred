@@ -136,6 +136,32 @@ def record(seconds: float = RECORD_SECONDS):
     return frames[:, 0]
 
 
+class Recorder:
+    """Hold-to-talk: open the mic on key-down, close it on key-up, keep the
+    frames in between. Used by the HUD's push-to-talk keys."""
+
+    def __init__(self):
+        self._frames: list = []
+        self._stream = None
+
+    def start(self) -> None:
+        import sounddevice as sd
+        self._frames = []
+        self._stream = sd.InputStream(
+            samplerate=SAMPLE_RATE, channels=1, dtype="float32",
+            callback=lambda indata, frames, t, status: self._frames.append(indata.copy()))
+        self._stream.start()
+
+    def stop(self):
+        import numpy as np
+        if self._stream is not None:
+            self._stream.stop()
+            self._stream.close()
+            self._stream = None
+        return (np.concatenate(self._frames)[:, 0] if self._frames
+                else np.zeros(0, dtype="float32"))
+
+
 def warm_up() -> None:
     """Load whisper and the piper voice ahead of the first request, and nudge
     Ollama to page the planner model in. Meant for a background thread at
@@ -159,6 +185,18 @@ def warm_up() -> None:
 def is_stop(transcript: str) -> bool:
     words = re.sub(r"[^a-z ]", "", transcript.lower()).split()
     return "stop" in words and (len(words) <= 3 or "alfred" in words)
+
+
+def is_unmute(transcript: str) -> bool:
+    words = set(re.sub(r"[^a-z ]", "", transcript.lower()).split())
+    return bool(words & {"unmute", "unmuted"}) or "un mute" in transcript.lower()
+
+
+def is_mute(transcript: str) -> bool:
+    """'mute' means silence Alfred's own voice — but never when it's 'unmute'."""
+    if is_unmute(transcript):
+        return False
+    return "mute" in set(re.sub(r"[^a-z ]", "", transcript.lower()).split())
 
 
 def is_yes(transcript: str) -> bool:

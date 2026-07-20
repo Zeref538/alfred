@@ -128,7 +128,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
    &#9000; CTRL+ALT+C summons this HUD anywhere</span>
   <button id="cog" style="margin-left:auto" title="settings">&#9881; settings</button>
  </div>
- <div id="hint">inputs: type here · &#9673; mic (5s push-to-talk) · &#128247; motion (stop only) · global hotkey — one validated door</div>
+ <div id="hint">inputs: type here · hold <b>J+K</b> to speak (release to send) · &#9673; mic (5s) · &#128247; motion (stop only) · say &#8220;mute&#8221;/&#8220;unmute&#8221; for my voice</div>
 </div>
 <script>
 const TOKEN = "__TOKEN__";
@@ -186,6 +186,20 @@ text.addEventListener("keydown",(k)=>{ if(k.key==="Enter" && text.value.trim()){
   say(text.value.trim(), true); post("/api/ask",{text:text.value.trim()}); text.value=""; }});
 document.getElementById("mic").onclick = ()=>post("/api/voice");
 document.getElementById("bell").onclick = ()=>post("/api/bell");
+// hold-to-talk: press J and K together to open the mic, release either to send
+const held = new Set(); let talking = false;
+function typingNow(){ const el = document.activeElement;
+  return el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"); }
+addEventListener("keydown",(e)=>{ if(e.repeat || typingNow()) return;
+  const k = e.key.toLowerCase(); if(k!=="j" && k!=="k") return;
+  held.add(k);
+  if(!talking && held.has("j") && held.has("k")){ talking = true; post("/api/listen",{on:true}); }
+});
+addEventListener("keyup",(e)=>{ const k = e.key.toLowerCase(); if(k!=="j" && k!=="k") return;
+  held.delete(k);
+  if(talking && !(held.has("j") && held.has("k"))){ talking = false; post("/api/listen",{on:false}); }
+});
+say("__GREETING__", false);  // the boot line (audio is spoken server-side)
 document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>post("/api/command",{name:b.dataset.cmd}));
 document.getElementById("motion").onchange = (e)=>post("/api/motion",{enable:e.target.checked});
 document.getElementById("cog").onclick = ()=>{ location.href = "/settings?t="+TOKEN; };
