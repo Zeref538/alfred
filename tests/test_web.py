@@ -24,7 +24,9 @@ def server(tmp_path):
     hits = []
     executor = Executor(
         {"web_search": lambda a: hits.append(a.query),
-         "set_volume": lambda a: hits.append(a.level)},
+         "set_volume": lambda a: hits.append(a.level),
+         "settings_change": lambda a: hits.append(a.value),
+         "open_file": lambda a: hits.append("opened")},
         Ledger(root=tmp_path), UndoManager())
     resolver = lambda utterance, ledger: json.dumps(
         {"plan": [{"action": "web_search", "args": {"query": utterance}}]})
@@ -81,16 +83,34 @@ def test_ask_flows_through_executor(server):
     assert server["hits"] == ["weather in manila"]
 
 
-def test_tier1_gate_can_be_belayed_over_the_wire(server, tmp_path):
-    session = server["session"]
-    session._resolver = lambda u, l: json.dumps(
-        {"plan": [{"action": "set_volume", "args": {"level": 5}}]})
-    events = session.subscribe()
-    threading.Thread(target=session.ask, args=("volume 5",), daemon=True).start()
+def _await_gate(events):
     gate = events.get(timeout=5)
     while gate["type"] != "gate":  # state events may precede the gate card
         gate = events.get(timeout=5)
-    assert gate["kind"] == "announce"
+    return gate
+
+
+def test_tier1_runs_without_a_gate(server):
+    # a reversible state change just happens — no card, no yes
+    session = server["session"]
+    session._resolver = lambda u, l: json.dumps(
+        {"plan": [{"action": "set_volume", "args": {"level": 5}}]})
+    call(server["port"], "/api/ask", body={"text": "volume 5"})
+    deadline = time.time() + 5
+    while 5 not in server["hits"] and time.time() < deadline:
+        time.sleep(0.05)
+    assert 5 in server["hits"]
+
+
+def test_tier2_confirm_can_be_declined_over_the_wire(server):
+    session = server["session"]
+    session._resolver = lambda u, l: json.dumps(
+        {"plan": [{"action": "settings_change",
+                   "args": {"key": "app_theme", "value": "dark"}}]})
+    events = session.subscribe()
+    threading.Thread(target=session.ask, args=("dark mode",), daemon=True).start()
+    gate = _await_gate(events)
+    assert gate["kind"] == "confirm"
     call(server["port"], "/api/gate", body={"id": gate["id"], "go": False})
     deadline = time.time() + 5
     said = []
@@ -99,8 +119,37 @@ def test_tier1_gate_can_be_belayed_over_the_wire(server, tmp_path):
         if event.get("type") == "say":
             said.append(event["text"])
             break
-    assert any("canceled" in s for s in said)
-    assert 5 not in server["hits"]  # the belayed action never ran
+    assert any("shan't" in s for s in said)
+    assert "dark" not in server["hits"]  # the declined action never ran
+
+
+def test_tier3_seal_needs_the_exact_phrase(server, tmp_path, monkeypatch):
+    import alfred.config as config
+    target = tmp_path / "notes.txt"
+    target.write_text("x", encoding="utf-8")
+    monkeypatch.setattr(config, "ALLOWED_FOLDERS", (tmp_path,))
+    session = server["session"]
+    session._resolver = lambda u, l: json.dumps(
+        {"plan": [{"action": "open_file", "args": {"path": str(target)}}]})
+
+    # wrong phrase → withheld, nothing opens
+    events = session.subscribe()
+    threading.Thread(target=session.ask, args=("open notes",), daemon=True).start()
+    gate = _await_gate(events)
+    assert gate["kind"] == "seal"
+    call(server["port"], "/api/gate", body={"id": gate["id"], "phrase": "yes"})
+    time.sleep(0.3)
+    assert "opened" not in server["hits"]
+
+    # exact phrase → it runs
+    threading.Thread(target=session.ask, args=("open notes",), daemon=True).start()
+    gate = _await_gate(events)
+    call(server["port"], "/api/gate",
+         body={"id": gate["id"], "phrase": "yes i approve please proceed"})
+    deadline = time.time() + 5
+    while "opened" not in server["hits"] and time.time() < deadline:
+        time.sleep(0.05)
+    assert "opened" in server["hits"]
 
 
 def test_unknown_route_is_404(server):
