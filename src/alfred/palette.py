@@ -156,6 +156,20 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
             print("  (voice muted — say 'unmute' to restore)")
             fieldlog.record(outcome="mute", raw=raw, corrected=transcript)
             continue
+        from . import clearance, settings
+        instruction = clearance.clearance_instruction(transcript)
+        if instruction is not None:  # "I confirm Alfred, ..."
+            change = clearance.parse_self_config(instruction)
+            if change is None:
+                print("  clearance accepted — but no setting caught")
+                speak("I didn't catch which setting, sir.")
+            else:
+                key, value = change
+                settings.save({key: value})
+                print(f"  {key} = {value} (effective next summons)")
+                speak(f"Done, sir — {key.replace('_', ' ')} is now {value}.")
+                fieldlog.record(outcome="clearance", raw=raw, detail=f"{key}={value}")
+            continue
         # resolve first: the user approves the PLAN, not just the words
         from .gate import describe
         from .registry import Tier

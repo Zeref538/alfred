@@ -150,7 +150,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
    &#9000; CTRL+ALT+C summons this HUD anywhere</span>
   <button id="cog" style="margin-left:auto" title="settings">&#9881; settings</button>
  </div>
- <div id="hint">inputs: type here · hold <b>J+K</b> to speak (release to send) · &#9673; mic (5s) · &#128247; motion (stop only) · say &#8220;mute&#8221;/&#8220;unmute&#8221; for my voice</div>
+ <div id="hint">inputs: type here · hold <b>__HOLD_LABEL__</b> to speak (release to send) · &#9673; mic (5s) · &#128247; motion (stop only) · say &#8220;mute&#8221;/&#8220;unmute&#8221; for my voice</div>
 </div>
 <script>
 const TOKEN = "__TOKEN__";
@@ -214,18 +214,20 @@ text.addEventListener("keydown",(k)=>{ if(k.key==="Enter" && text.value.trim()){
   say(text.value.trim(), true); post("/api/ask",{text:text.value.trim()}); text.value=""; }});
 document.getElementById("mic").onclick = ()=>post("/api/voice");
 document.getElementById("bell").onclick = ()=>post("/api/bell");
-// hold-to-talk: press J and K together to open the mic, release either to send
+// hold-to-talk: press the configured chord together to open the mic, release to send
+const HOLD = __HOLD_KEYS__;  // e.g. ["j","k"] — editable in settings
 const held = new Set(); let talking = false;
 function typingNow(){ const el = document.activeElement;
   return el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"); }
+const allHeld = ()=> HOLD.every(k => held.has(k));
 addEventListener("keydown",(e)=>{ if(e.repeat || typingNow()) return;
-  const k = e.key.toLowerCase(); if(k!=="j" && k!=="k") return;
+  const k = e.key.toLowerCase(); if(!HOLD.includes(k)) return;
   held.add(k);
-  if(!talking && held.has("j") && held.has("k")){ talking = true; post("/api/listen",{on:true}); }
+  if(!talking && allHeld()){ talking = true; post("/api/listen",{on:true}); }
 });
-addEventListener("keyup",(e)=>{ const k = e.key.toLowerCase(); if(k!=="j" && k!=="k") return;
+addEventListener("keyup",(e)=>{ const k = e.key.toLowerCase(); if(!HOLD.includes(k)) return;
   held.delete(k);
-  if(talking && !(held.has("j") && held.has("k"))){ talking = false; post("/api/listen",{on:false}); }
+  if(talking && !allHeld()){ talking = false; post("/api/listen",{on:false}); }
 });
 say("__GREETING__", false);  // the boot line (audio is spoken server-side)
 document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>post("/api/command",{name:b.dataset.cmd}));
@@ -282,6 +284,10 @@ SETTINGS_PAGE = """<!doctype html><html><head><meta charset="utf-8">
  <h2>Brain &amp; web</h2>
  <div class="row"><label>planner model</label><input id="model"></div>
  <div class="row"><label>search engine url</label><input id="search"></div>
+ <h2>Hotkeys</h2>
+ <p class="hintline">e.g. summon "ctrl+alt+c", hold-to-talk "j+k". Effective on the next summons.</p>
+ <div class="row"><label>summon hotkey</label><input id="summon_hotkey"></div>
+ <div class="row"><label>hold-to-talk keys</label><input id="hold_keys"></div>
  <div class="row"><button id="save">save preferences</button>
   <button id="apps">rescan apps</button><button id="vocab">relearn bookmarks</button>
   <button id="back">back to the hud</button></div>
@@ -294,7 +300,8 @@ SETTINGS_PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <script>
 const TOKEN = "__TOKEN__";
 const status = (t)=>{ document.getElementById("status").textContent = t; };
-const FIELDS = ["voice_pace","voice_volume","whisper","piper_voice","model","search"];
+const FIELDS = ["voice_pace","voice_volume","whisper","piper_voice","model","search",
+               "summon_hotkey","hold_keys"];
 function post(path, body){ return fetch(path, {method:"POST",
   headers:{"Authorization":"Bearer "+TOKEN,"Content-Type":"application/json"},
   body:JSON.stringify(body||{})}); }
