@@ -163,11 +163,23 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
         try:
             steps = validate_plan(_resolve_utterance(transcript, ledger))
         except Refusal as refusal:
-            print(refusal)
-            speak(str(refusal))
             fieldlog.record(outcome="refusal", raw=raw, corrected=transcript,
                             detail=str(refusal))
-            continue
+            from .web import _strip_wake
+            query = _strip_wake(transcript)
+            if not query:
+                print(refusal)
+                speak(str(refusal))
+                continue
+            print(f'  didn\'t follow, sir — shall I search "{query}"?')
+            speak(f"I didn't quite follow, sir. Shall I search for {query}?")
+            if not voice.heard_confirmation():
+                speak(voice.stand_down())
+                continue
+            steps = validate_plan(json.dumps(
+                {"plan": [{"action": "web_search", "args": {"query": query}}]}))
+            fieldlog.record(outcome="fallback", raw=raw, corrected=transcript,
+                            detail=f"search: {query}")
         print("  he would:")  # shown, never spoken back
         for step in steps:
             print("   - " + describe(step))
@@ -272,6 +284,9 @@ def main(argv: list[str] | None = None) -> int:
     if argv[:1] == ["web"]:
         from .web import main as web_main
         return web_main()
+    if argv[:1] == ["stop"]:
+        from .web import stop_running
+        return stop_running()
     if argv[:1] == ["hud"]:
         from .hud import main as hud_main
         return hud_main()
