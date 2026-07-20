@@ -117,29 +117,44 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
         except (EOFError, KeyboardInterrupt):
             voice.speak("Very good, sir.")
             return 0
-        transcript = voice.transcribe(voice.record())
-        print(f'  heard: "{transcript}"')
-        if not transcript:
+        from . import fieldlog
+        raw = voice.transcribe(voice.record())
+        print(f'  heard: "{raw}"')
+        if not raw:
+            fieldlog.record(outcome="empty", raw="")
             continue
+        # second hearing: the LLM repairs likely mishears from the vocabulary
+        from .planner import correct_transcript
+        transcript = correct_transcript(raw)
+        if transcript != raw:
+            print(f'  taking that as: "{transcript}"')
         if voice.is_stop(transcript):
             executor.abort.set()
             ledger.record(event="bell", transcript=transcript)
             speak("As you were, sir.")
             executor.abort.clear()
+            fieldlog.record(outcome="bell", raw=raw, corrected=transcript)
             continue
-        # second hearing: the LLM repairs likely mishears from the vocabulary
-        from .planner import correct_transcript
-        corrected = correct_transcript(transcript)
-        if corrected != transcript:
-            print(f'  taking that as: "{corrected}"')
-        transcript = corrected
+        if voice.is_undo(transcript):
+            handle = executor.undo.undo_last()
+            if handle is None:
+                print("  nothing to undo, sir")
+                speak("Nothing to undo, sir.")
+            else:
+                ledger.record(event="undo", action=handle.action, detail=handle.description)
+                print(f"  undone: {handle.description}")
+                speak("Undone, sir.")
+            fieldlog.record(outcome="undo", raw=raw, corrected=transcript)
+            continue
         if voice.is_unmute(transcript):
             muted[0] = False
             voice.speak("Voice restored, sir.")
+            fieldlog.record(outcome="unmute", raw=raw, corrected=transcript)
             continue
         if voice.is_mute(transcript):
             muted[0] = True
             print("  (voice muted — say 'unmute' to restore)")
+            fieldlog.record(outcome="mute", raw=raw, corrected=transcript)
             continue
         # resolve first: the user approves the PLAN, not just the words
         from .gate import describe
@@ -150,10 +165,14 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
         except Refusal as refusal:
             print(refusal)
             speak(str(refusal))
+            fieldlog.record(outcome="refusal", raw=raw, corrected=transcript,
+                            detail=str(refusal))
             continue
         print("  he would:")  # shown, never spoken back
         for step in steps:
             print("   - " + describe(step))
+        fieldlog.record(outcome="plan", raw=raw, corrected=transcript,
+                        detail="; ".join(describe(s) for s in steps))
 
         def _run() -> None:
             results = executor.run(steps, intent=transcript)
@@ -229,6 +248,13 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
             print(f"Apps on the menu ({len(config.ALLOWED_APPS)}):")
             for name in sorted(config.ALLOWED_APPS):
                 print("  " + name)
+    elif command == "fieldlog":
+        from . import fieldlog
+        if rest[:1] == ["clear"]:
+            fieldlog.clear()
+            print("Field log wiped, sir — a fresh testing run begins.")
+        else:
+            print(fieldlog.summary())
     elif command == "learn":
         from . import vocab
         vocabulary = vocab.build_vocabulary()
