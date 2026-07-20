@@ -35,6 +35,10 @@ from .webpage import PAGE
 # consent already obtained (or not needed) — the tiers don't ask twice
 _GRANTED = Etiquette(confirm=lambda s: True, seal=lambda s: True)
 
+GREETING = ("Good evening, sir. All systems are nominal. "
+            "Alfred is online and at your service.")
+MAX_HOLD_SECONDS = 30  # a stuck key can't hold the mic open forever
+
 
 class Session:
     """Everything behind the API. UI-free, injectable, testable."""
@@ -47,9 +51,12 @@ class Session:
             self.ledger, self.undo = executor.ledger, executor.undo
         self._resolver = resolver
         self._subscribers: list[queue.Queue] = []
-        self._gates: dict[str, queue.Queue] = {}
+        self._gates: dict[str, tuple] = {}
         self._motion = None
         self._pending_steps = None
+        self._muted = False       # "mute" silences his voice; "unmute" restores it
+        self._recorder = None     # hold-to-talk recorder, when a key is held
+        self._hold_timer = None
 
     # --- events out to the page ---------------------------------------------
 
@@ -132,23 +139,65 @@ class Session:
         finally:
             self.emit(type="state", state="idle")
 
-    @staticmethod
-    def _speak(text: str) -> None:
+    def _speak(self, text: str) -> None:
+        if self._muted:
+            return
         from . import voice
         voice.speak(text)
 
+    def greet(self) -> None:
+        """The boot line — spoken once at startup (the page shows the text)."""
+        self._speak(GREETING)
+
+    # --- listening ------------------------------------------------------------
+
     def hear(self) -> None:
-        """Push-to-talk with the mishear guard: Alfred shows the plan he'd run
-        and asks for consent only as heavy as the plan's tier — nothing for
-        read-only/reversible work, a spoken yes for the consequential, the
-        typed seal (on the panel) for anything that reaches your files."""
+        """Fixed 5-second push-to-talk (the mic button)."""
         from . import voice
         self.emit(type="state", state="listening")
         self.say("Listening, sir (5 seconds)…")
         try:
-            transcript = voice.transcribe(voice.record())
+            audio = voice.record()
         finally:
             self.emit(type="state", state="idle")
+        self._process_audio(audio)
+
+    def hold_start(self) -> None:
+        """Open the mic and hold it — the HUD's hold-to-talk keys (J+K)."""
+        from . import voice
+        if self._recorder is not None:
+            return
+        recorder = voice.Recorder()
+        try:
+            recorder.start()
+        except Exception as error:
+            self.say(f"My apologies, sir — the microphone won't open ({error}).")
+            return
+        self._recorder = recorder
+        self.emit(type="state", state="listening")
+        self.say("Listening, sir — release to send.")
+        self._hold_timer = threading.Timer(MAX_HOLD_SECONDS, self.hold_stop)
+        self._hold_timer.daemon = True
+        self._hold_timer.start()
+
+    def hold_stop(self) -> None:
+        recorder, self._recorder = self._recorder, None  # whoever wins, stops it once
+        if self._hold_timer is not None:
+            self._hold_timer.cancel()
+            self._hold_timer = None
+        if recorder is None:
+            return
+        audio = recorder.stop()
+        self.emit(type="state", state="idle")
+        self._process_audio(audio)
+
+    def _process_audio(self, audio) -> None:
+        """The mishear guard, shared by every listening path: transcribe, repair,
+        honour the bell and the mute word, then show the plan and gate it by tier
+        — nothing for read-only/reversible, a spoken yes for the consequential,
+        the typed seal (on the panel) for anything that reaches your files."""
+        from . import voice
+        transcript = voice.transcribe(audio)
         self.say(f'Heard: "{transcript}"')
         if not transcript:
             return
@@ -159,8 +208,16 @@ class Session:
             transcript = corrected
         if voice.is_stop(transcript):
             self.ring_bell("spoken")
-            from .voice import stand_down
-            self._speak(stand_down())
+            self._speak(voice.stand_down())
+            return
+        if voice.is_unmute(transcript):
+            self._muted = False
+            self.say("Voice restored, sir.")
+            self._speak("Voice restored, sir.")
+            return
+        if voice.is_mute(transcript):
+            self._muted = True
+            self.say("Muted, sir — say 'unmute' to bring me back.")
             return
         # resolve first, so the user approves the PLAN, not just the words
         from .gate import describe
@@ -288,7 +345,8 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(PAGE.replace("__TOKEN__", token).encode("utf-8"))
+                self.wfile.write(PAGE.replace("__TOKEN__", token)
+                                 .replace("__GREETING__", GREETING).encode("utf-8"))
             elif route == "/settings":
                 from .webpage import SETTINGS_PAGE
                 self.send_response(200)
@@ -335,6 +393,9 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                                  args=(body["text"].strip(),), daemon=True).start()
             elif route == "/api/voice":
                 threading.Thread(target=session.hear, daemon=True).start()
+            elif route == "/api/listen":  # hold-to-talk: on key-down / key-up
+                target = session.hold_start if body.get("on") else session.hold_stop
+                threading.Thread(target=target, daemon=True).start()
             elif route == "/api/bell":
                 session.ring_bell("page")
             elif route == "/api/gate":
@@ -407,7 +468,11 @@ def main() -> int:
     print("(the token is this session's key — the page keeps it; Ctrl+C dismisses me)",
           flush=True)
     from . import voice
-    threading.Thread(target=voice.warm_up, daemon=True).start()
+
+    def _boot() -> None:
+        session.greet()   # loads Piper and delivers the spoken boot line
+        voice.warm_up()   # then whisper + planner in the background
+    threading.Thread(target=_boot, daemon=True).start()
     webbrowser.open(url)
     try:
         server.serve_forever()
