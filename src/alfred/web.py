@@ -160,10 +160,35 @@ class Session:
             from .voice import apologize
             self._speak(apologize())
 
+    def _maybe_clearance(self, text: str, spoken: bool = False) -> bool:
+        """'I confirm Alfred, ...' — authorized self-config. Returns True if it
+        handled the command (whether or not it understood the setting)."""
+        from . import clearance, fieldlog, settings
+        instruction = clearance.clearance_instruction(text)
+        if instruction is None:
+            return False
+        change = clearance.parse_self_config(instruction)
+        if change is None:
+            self.say("Clearance accepted, sir — but I didn't catch which setting to change.")
+            if spoken:
+                self._speak("I didn't catch which setting, sir.")
+            return True
+        key, value = change
+        settings.save({key: value})
+        pretty = key.replace("_", " ")
+        self.say(f"Clearance accepted — {pretty} set to {value}. "
+                 "Effective on my next summons, sir.")
+        if spoken:
+            self._speak(f"Done, sir — {pretty} is now {value}.")
+        fieldlog.record(outcome="clearance", raw=text, detail=f"{key}={value}")
+        return True
+
     def ask(self, utterance: str, spoken: bool = False) -> None:
         if not self._try_begin():
             return
         try:
+            if self._maybe_clearance(utterance, spoken):
+                return
             self.emit(type="state", state="working")
             self._execute(self._plan_for(utterance), utterance, self.etiquette(), spoken)
         except Refusal as refusal:
@@ -278,6 +303,8 @@ class Session:
             self._muted = True
             self.say("Muted, sir — say 'unmute' to bring me back.")
             fieldlog.record(outcome="mute", raw=raw, corrected=transcript)
+            return
+        if self._maybe_clearance(transcript, spoken=True):  # "I confirm Alfred, ..."
             return
         # resolve first, so the user approves the PLAN, not just the words
         from .gate import describe
@@ -446,8 +473,13 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(PAGE.replace("__TOKEN__", token)
-                                 .replace("__GREETING__", GREETING).encode("utf-8"))
+                from . import globalkeys
+                keys = list(globalkeys.hold_keys())
+                page = (PAGE.replace("__TOKEN__", token)
+                        .replace("__GREETING__", GREETING)
+                        .replace("__HOLD_KEYS__", json.dumps(keys))
+                        .replace("__HOLD_LABEL__", "+".join(k.upper() for k in keys)))
+                self.wfile.write(page.encode("utf-8"))
             elif route == "/settings":
                 from .webpage import SETTINGS_PAGE
                 self.send_response(200)
@@ -511,7 +543,19 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                 session.motion(bool(body.get("enable")))
             elif route == "/api/settings":
                 from . import settings, voice
-                settings.save({str(k): str(v) for k, v in body.items()})
+                from .summon import parse_hotkey
+                values = {str(k): str(v) for k, v in body.items()}
+                if "summon_hotkey" in values:  # reject a combo that can't register
+                    try:
+                        parse_hotkey(values["summon_hotkey"])
+                    except ValueError:
+                        self._deny(400, "that summon hotkey is not valid, sir")
+                        return
+                if "hold_keys" in values and len(
+                        [k for k in values["hold_keys"].split("+") if k.strip()]) < 2:
+                    self._deny(400, "hold-to-talk needs at least two keys, sir")
+                    return
+                settings.save(values)
                 voice._model = None   # whisper/piper choices apply immediately
                 voice._piper = None
                 session.say("Preferences noted, sir.")
