@@ -84,11 +84,11 @@ def test_undo_on_empty_stack_is_a_shrug():
 
 # --- etiquette gate ----------------------------------------------------------
 
-def gate(announce=True, confirm=True, log=None):
+def gate(confirm=True, seal=True, log=None):
     log = log if log is not None else []
     return Etiquette(
-        announce=lambda s: (log.append(("announce", s)), announce)[1],
         confirm=lambda s: (log.append(("confirm", s)), confirm)[1],
+        seal=lambda s: (log.append(("seal", s)), seal)[1],
     ), log
 
 
@@ -98,25 +98,42 @@ def test_tier0_passes_without_asking():
     assert log == []
 
 
-def test_tier1_cancel_refuses():
-    etiquette, _ = gate(announce=False)
-    with pytest.raises(Refusal):
-        clear_plan(steps_for(VOLUME), etiquette)
+def test_tier1_runs_without_a_yes():
+    # reversible state changes are shown, never gated behind a confirmation
+    etiquette, log = gate(confirm=False, seal=False)
+    clear_plan(steps_for(VOLUME), etiquette)  # no raise
+    assert log == []
 
 
-def test_spoken_description_uses_summaries_not_signatures():
-    from alfred.gate import describe_spoken
-    steps = steps_for(VOLUME, SEARCH)
-    spoken = describe_spoken(steps)
-    assert spoken == ("Set the master volume (0-100) — 30; "
-                      "then Run a web search in the browser — hello")
+def test_seal_phrase_forgives_only_spacing_and_case():
+    from alfred.gate import is_seal_phrase
+    assert is_seal_phrase("Yes I approve please proceed.")
+    assert is_seal_phrase("  yes   i approve please proceed  ")
+    assert not is_seal_phrase("yes i approve")
+    assert not is_seal_phrase("yes")
 
 
 def test_tier2_gates_whole_plan_once_at_highest_tier():
     etiquette, log = gate(confirm=False)
     with pytest.raises(Refusal):
         clear_plan(steps_for(SEARCH, THEME), etiquette)
-    assert [kind for kind, _ in log] == ["confirm"]  # not announce; asked once
+    assert [kind for kind, _ in log] == ["confirm"]  # asked once, as a plain yes
+
+
+def test_tier3_requires_the_typed_seal(tmp_path, monkeypatch):
+    import alfred.config as config
+    target = tmp_path / "notes.txt"
+    target.write_text("x", encoding="utf-8")
+    monkeypatch.setattr(config, "ALLOWED_FOLDERS", (tmp_path,))
+    steps = steps_for({"action": "open_file", "args": {"path": str(target)}})
+
+    withheld, _ = gate(seal=False)
+    with pytest.raises(Refusal):
+        clear_plan(steps, withheld)
+
+    granted, log = gate(seal=True)
+    clear_plan(steps, granted)  # no raise
+    assert [kind for kind, _ in log] == ["seal"]  # the top rung, not a plain confirm
 
 
 # --- executor ----------------------------------------------------------------

@@ -25,14 +25,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .adapters import build_adapters
 from .executor import Executor
-from .gate import Etiquette, clear_plan
+from .gate import Etiquette, clear_plan, is_seal_phrase
 from .ledger import Ledger
-from .registry import REGISTRY
+from .registry import REGISTRY, Tier
 from .undo import UndoManager
-from .validator import Refusal, validate_plan
+from .validator import Refusal, plan_tier, validate_plan
 from .webpage import PAGE
 
-ANNOUNCE_SECONDS = 2.0
+# consent already obtained (or not needed) — the tiers don't ask twice
+_GRANTED = Etiquette(confirm=lambda s: True, seal=lambda s: True)
 
 
 class Session:
@@ -66,31 +67,30 @@ class Session:
 
     # --- the etiquette gate over the wire ------------------------------------
 
-    def _ask_page(self, kind: str, summary: str, timeout: float | None) -> bool:
+    def _ask_page(self, kind: str, summary: str) -> bool:
         gate_id = secrets.token_urlsafe(8)
         answers: queue.Queue = queue.Queue()
-        self._gates[gate_id] = answers
-        self.emit(type="gate", kind=kind, id=gate_id, summary=summary,
-                  seconds=ANNOUNCE_SECONDS if timeout else None)
+        self._gates[gate_id] = (kind, answers)
+        self.emit(type="gate", kind=kind, id=gate_id, summary=summary)
         try:
-            return answers.get(timeout=timeout)
-        except queue.Empty:
-            return True  # an announcement not canceled proceeds
+            return answers.get()
         finally:
             self._gates.pop(gate_id, None)
             self.emit(type="gate_done", id=gate_id)
 
-    def answer_gate(self, gate_id: str, go: bool) -> bool:
-        answers = self._gates.get(gate_id)
-        if answers is None:
+    def answer_gate(self, gate_id: str, go: bool, phrase: str = "") -> bool:
+        entry = self._gates.get(gate_id)
+        if entry is None:
             return False
-        answers.put(go)
+        kind, answers = entry
+        # a seal is verified here, server-side — the page only carries the text
+        answers.put(is_seal_phrase(phrase) if kind == "seal" else bool(go))
         return True
 
     def etiquette(self) -> Etiquette:
         return Etiquette(
-            announce=lambda s: self._ask_page("announce", s, ANNOUNCE_SECONDS),
-            confirm=lambda s: self._ask_page("confirm", s, None),
+            confirm=lambda s: self._ask_page("confirm", s),
+            seal=lambda s: self._ask_page("seal", s),
         )
 
     # --- doing things ---------------------------------------------------------
@@ -103,12 +103,8 @@ class Session:
             plan = _resolve_utterance(utterance, self.ledger)
         return validate_plan(plan)
 
-    def _execute(self, steps, intent: str, spoken: bool = False,
-                 preapproved: bool = False) -> None:
-        # preapproved: the user already said yes to this exact plan preview,
-        # so the tiers don't ask twice
-        gate = (Etiquette(announce=lambda s: True, confirm=lambda s: True)
-                if preapproved else self.etiquette())
+    def _execute(self, steps, intent: str, gate: Etiquette,
+                 spoken: bool = False) -> None:
         clear_plan(steps, gate)
         results = self.executor.run(steps, intent=intent)
         for r in results:
@@ -126,7 +122,7 @@ class Session:
     def ask(self, utterance: str, spoken: bool = False) -> None:
         try:
             self.emit(type="state", state="working")
-            self._execute(self._plan_for(utterance), utterance, spoken)
+            self._execute(self._plan_for(utterance), utterance, self.etiquette(), spoken)
         except Refusal as refusal:
             self.say(str(refusal))
             if spoken:
@@ -142,8 +138,10 @@ class Session:
         voice.speak(text)
 
     def hear(self) -> None:
-        """Push-to-talk with the mishear guard: Alfred says what he heard and
-        acts only on a spoken yes (or the page's confirm card)."""
+        """Push-to-talk with the mishear guard: Alfred shows the plan he'd run
+        and asks for consent only as heavy as the plan's tier — nothing for
+        read-only/reversible work, a spoken yes for the consequential, the
+        typed seal (on the panel) for anything that reaches your files."""
         from . import voice
         self.emit(type="state", state="listening")
         self.say("Listening, sir (5 seconds)…")
@@ -165,7 +163,7 @@ class Session:
             self._speak(stand_down())
             return
         # resolve first, so the user approves the PLAN, not just the words
-        from .gate import describe, describe_spoken
+        from .gate import describe
         try:
             self.emit(type="state", state="working")
             self._pending_steps = self._plan_for(transcript)
@@ -175,24 +173,31 @@ class Session:
             return
         finally:
             self.emit(type="state", state="idle")
+        # show the plan on the panel — never speak it back; the yes scales to tier
         self.say("He would:")
         for step in self._pending_steps:
             self.say("  - " + describe(step))
-        self._speak(f"I shall {describe_spoken(self._pending_steps)} — sir?")
-        self.emit(type="state", state="listening")
+        tier = plan_tier(self._pending_steps)
         try:
-            confirmed = voice.heard_confirmation()
-        finally:
-            self.emit(type="state", state="idle")
-        if not confirmed:
-            self.ledger.record(event="voice_declined", transcript=transcript)
-            self.say("No confirmation — standing down.")
-            from .voice import stand_down
-            self._speak(stand_down())
-            return
-        try:
-            self.emit(type="state", state="working")
-            self._execute(self._pending_steps, transcript, spoken=True, preapproved=True)
+            if tier <= Tier.ANNOUNCED:  # nothing consequential — just do it
+                self.emit(type="state", state="working")
+                self._execute(self._pending_steps, transcript, _GRANTED, spoken=True)
+            elif tier is Tier.CONFIRM:
+                self._speak("Shall I proceed, sir?")
+                self.emit(type="state", state="listening")
+                try:
+                    confirmed = voice.heard_confirmation()
+                finally:
+                    self.emit(type="state", state="idle")
+                if confirmed:
+                    self._execute(self._pending_steps, transcript, _GRANTED, spoken=True)
+                else:
+                    self.ledger.record(event="voice_declined", transcript=transcript)
+                    self.say("No confirmation — standing down.")
+                    self._speak(voice.stand_down())
+            else:  # UNDER_SEAL — voice can't type the seal; the panel takes it
+                self._speak("That reaches your files, sir — kindly type your approval below.")
+                self._execute(self._pending_steps, transcript, self.etiquette(), spoken=True)
         except Refusal as refusal:
             self.say(str(refusal))
             self._speak(str(refusal))
@@ -333,7 +338,8 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
             elif route == "/api/bell":
                 session.ring_bell("page")
             elif route == "/api/gate":
-                session.answer_gate(str(body.get("id", "")), bool(body.get("go")))
+                session.answer_gate(str(body.get("id", "")), bool(body.get("go")),
+                                    str(body.get("phrase", "")))
             elif route == "/api/command":
                 threading.Thread(target=session.command,
                                  args=(str(body.get("name", "")),), daemon=True).start()

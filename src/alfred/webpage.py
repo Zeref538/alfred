@@ -154,16 +154,18 @@ function gateCard(e){
   const label = document.createElement("span");
   const buttons = document.createElement("span");
   buttons.style.display = "flex"; buttons.style.gap = ".4rem";
-  if (e.kind === "announce"){
-    let left = e.seconds;
-    label.textContent = `${e.summary} — engaging in ${left.toFixed(0)}s`;
-    const timer = setInterval(()=>{ left -= 0.25;
-      if(left <= 0){ clearInterval(timer); card.remove(); }
-      else label.textContent = `${e.summary} — engaging in ${Math.ceil(left)}s`; }, 250);
-    const cancel = document.createElement("button"); cancel.textContent = "belay";
-    cancel.onclick = ()=>{ clearInterval(timer); post("/api/gate",{id:e.id,go:false}); card.remove(); };
-    buttons.append(cancel);
-  } else {
+  if (e.kind === "seal"){
+    label.textContent = e.summary + " — this reaches your files. Type your approval, exactly:";
+    const field = document.createElement("input");
+    field.placeholder = "yes i approve please proceed";
+    field.style.cssText = "flex:1;min-width:14rem;background:#0a0a0a;border:1px solid var(--amber);color:var(--amber);padding:.35rem .5rem;font:inherit";
+    const b = document.createElement("button"); b.textContent = "approve";
+    const send = ()=>{ post("/api/gate",{id:e.id,phrase:field.value}); card.remove(); };
+    b.onclick = send;
+    field.addEventListener("keydown",(k)=>{ if(k.key==="Enter") send(); });
+    buttons.append(field, b);
+    setTimeout(()=>field.focus(), 0);
+  } else {  // confirm
     label.textContent = e.summary;
     for (const [text, go] of [["engage", true], ["negative", false]]){
       const b = document.createElement("button"); b.textContent = text;

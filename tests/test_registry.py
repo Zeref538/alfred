@@ -27,4 +27,4 @@ def test_plan_gates_at_highest_tier():
         {"action": "settings_change",
          "args": {"key": "app_theme", "value": "dark"}},               # tier 2
     ]}))
-    assert plan_tier(steps) is Tier.BY_YOUR_LEAVE
+    assert plan_tier(steps) is Tier.CONFIRM
