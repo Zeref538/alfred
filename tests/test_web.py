@@ -203,6 +203,46 @@ def test_strip_wake_word():
         assert _strip_wake(kept) == kept
 
 
+def _steps(plan):
+    from alfred.validator import validate_plan
+    return validate_plan(json.dumps({"plan": plan}))
+
+
+def test_a_plan_that_ignores_the_order_is_not_covered():
+    # THE LIVE FAILURE: "playlofi beats on youtube" resolved to plain
+    # youtube.com — confidently wrong rather than uncertain, so neither the
+    # hearing guard nor the refusal fallback caught it.
+    from alfred.web import plan_covers
+    assert not plan_covers("playlofi beats on youtube", _steps(
+        [{"action": "open_url", "args": {"url": "https://youtube.com"}}]))
+
+
+@pytest.mark.parametrize("said, plan", [
+    ("open youtube", [{"action": "open_url", "args": {"url": "https://youtube.com"}}]),
+    ("play stranger things on netflix",
+     [{"action": "play_media",
+       "args": {"url": "https://www.netflix.com/search?q=stranger%20things"}}]),
+    ("open my go trade tab", [{"action": "focus_tab", "args": {"name": "go trade"}}]),
+])
+def test_honest_plans_pass_without_friction(said, plan):
+    from alfred.web import plan_covers
+    assert plan_covers(said, _steps(plan))
+
+
+@pytest.mark.parametrize("said, plan", [
+    ("silence the notifications",
+     [{"action": "toggle_do_not_disturb", "args": {"enabled": True}}]),
+    ("set the volume to thirty", [{"action": "set_volume", "args": {"level": 30}}]),
+    ("snap this window left",
+     [{"action": "window_layout", "args": {"preset": "left_half"}}]),
+])
+def test_enum_actions_are_exempt(said, plan):
+    # these quite properly echo none of the spoken words back, and must never
+    # be nagged about
+    from alfred.web import plan_covers
+    assert plan_covers(said, _steps(plan))
+
+
 def test_unknown_route_is_404(server):
     with pytest.raises(urllib.error.HTTPError) as error:
         call(server["port"], "/api/shell", body={"cmd": "dir"})
