@@ -44,7 +44,11 @@ GREETING = _voice.greeting()
 MAX_HOLD_SECONDS = 30  # a stuck key can't hold the mic open forever
 IDLE_GRACE_SECONDS = 3.0  # after the last window closes, dismiss himself
 
-_WAKE = re.compile(r"^\s*(?:hey\s+|ok\s+)?alfred\b[\s,:.]*", re.I)
+# How whisper actually renders his name when addressed. "alfredo" is spared
+# on purpose — that's a pasta, not a butler.
+_WAKE = re.compile(
+    r"^\s*(?:hey\s+|ok\s+|okay\s+)?"
+    r"(?:alfred|alfrid|alfered|alford|unfred|elfred|alfr[ae]d)\b[\s,:.]*", re.I)
 
 
 def _strip_wake(text: str) -> str:

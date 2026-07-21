@@ -88,6 +88,35 @@ def test_common_sites_open_without_the_model(vocab_file, monkeypatch):
     assert vocab.site_lookup("what time is it") is None   # not an open phrase
 
 
+def test_spoken_url_with_slash_path():
+    # "open chess.com slash daily puzzles" searched "slash daily puzzles" before
+    assert vocab.url_lookup("open chess.com slash daily puzzles") == \
+        "https://chess.com/daily-puzzles"
+    assert vocab.url_lookup("go to github dot com") == "https://github.com"
+    assert vocab.url_lookup("set the volume to twenty") is None
+
+
+def test_shortcuts_beat_everything_and_ignore_filler(tmp_path, monkeypatch):
+    # the live failure: "my go trade tab" is an open TAB, never a bookmark
+    monkeypatch.setattr(vocab, "SHORTCUTS_FILE", tmp_path / "shortcuts.yaml")
+    monkeypatch.setattr(vocab, "VOCAB_FILE", tmp_path / "vocabulary.yaml")
+    vocab.remember("go trade", "https://ultra.heygotrade.com/portfolio")
+    for said in ("open my go trade investment tab", "open my go trade tab",
+                 "open go trade"):
+        assert vocab.site_lookup(said) == "https://ultra.heygotrade.com/portfolio"
+    # a shortcut also outranks the built-in table
+    vocab.remember("youtube", "https://my.private.tube")
+    assert vocab.site_lookup("open my youtube tab") == "https://my.private.tube"
+
+
+def test_shortcuts_reject_non_http(tmp_path, monkeypatch):
+    monkeypatch.setattr(vocab, "SHORTCUTS_FILE", tmp_path / "shortcuts.yaml")
+    (tmp_path / "shortcuts.yaml").write_text(
+        "shortcuts:\n  evil: javascript:alert(1)\n  fine: https://ok.example\n",
+        encoding="utf-8")
+    assert vocab.load_shortcuts() == {"fine": "https://ok.example"}
+
+
 def test_bookmarks_win_over_common_sites(vocab_file, monkeypatch):
     vocab.VOCAB_FILE.write_text(
         "sites:\n  youtube: https://my.private.tube/home\n", encoding="utf-8")

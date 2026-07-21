@@ -42,7 +42,7 @@ def scan_start_menu(roots: list[Path] | None = None) -> dict[str, str]:
 
 def focus_app(args: schemas.FocusApp) -> None:
     target = args.title.lower()
-    found: list[int] = []
+    windows: list[tuple[int, str]] = []
 
     @ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
     def visit(hwnd, _):
@@ -51,13 +51,22 @@ def focus_app(args: schemas.FocusApp) -> None:
             if length:
                 buf = ctypes.create_unicode_buffer(length + 1)
                 user32.GetWindowTextW(hwnd, buf, length + 1)
-                if target in buf.value.lower():
-                    found.append(hwnd)
-                    return False
+                windows.append((hwnd, buf.value))
         return True
 
     user32.EnumWindows(visit, 0)
-    if not found:
-        raise RuntimeError(f"no visible window matching '{args.title}'")
-    user32.ShowWindow(found[0], 9)  # SW_RESTORE, in case minimized
-    user32.SetForegroundWindow(found[0])
+    # the whole phrase first; failing that any solid word of it, so "google
+    # chrome" still finds a window merely titled "... - Chrome"
+    hwnd = next((h for h, title in windows if target in title.lower()), None)
+    if hwnd is None:
+        words = [w for w in target.split() if len(w) >= 4]
+        hwnd = next((h for h, title in windows
+                     if any(w in title.lower() for w in words)), None)
+    if hwnd is None:
+        open_now = ", ".join(dict.fromkeys(
+            t.split(" - ")[-1] for _, t in windows if t.strip()))[:180]
+        raise RuntimeError(
+            f"nothing called '{args.title}' is open, sir"
+            + (f" — I can see: {open_now}" if open_now else ""))
+    user32.ShowWindow(hwnd, 9)  # SW_RESTORE, in case minimized
+    user32.SetForegroundWindow(hwnd)
