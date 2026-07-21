@@ -23,7 +23,7 @@ from . import config
 from .registry import REGISTRY
 from .validator import PlanStep, Refusal, validate_plan
 
-PROMPT_VERSION = "p2"
+PROMPT_VERSION = "p3"  # p2 + the bridge actions, compounds, and refuse-don't-search
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 # small non-thinking default: on this hardware the 4b variant refuses
 # think=false and reasons for minutes; ALFRED_MODEL / settings override
@@ -46,14 +46,20 @@ Rules:
   word that isn't in that list.
 - "skip"/"next song" means media_control next; "pause"/"play" means
   play_pause; "previous" means previous.
-- focus_tab ONLY when the user says "tab" — pass the spoken name, never a URL.
+- A WINDOW or an application is focus_app. Use focus_tab ONLY when the user
+  actually says "tab", and pass the spoken name, never a URL.
 - play_media needs a real URL, so use it ONLY when the user named the site to
   play from. Otherwise prefer web_search. NEVER invent a media URL.
 - Several orders in one sentence ("open X and set the volume to 30") means
   several steps, in the order given. Do not answer only the first.
 - If the request names something the menu can do, do it. Return {"plan": []}
-  ONLY when the menu truly cannot fulfil it (deleting, installing, shutting
-  down, typing, closing apps) or the request is too vague to act on safely.
+  ONLY when the menu truly cannot fulfil it (deleting, installing, uninstalling,
+  formatting, shutting down, typing, closing apps) or the request is too vague
+  to act on safely.
+- When you decline, decline. NEVER substitute a web_search ABOUT the thing —
+  "format my d drive" is an order to format a drive, not a request to read
+  about formatting drives. Answering a refused order with a search is a wrong
+  answer, not a helpful one.
 
 Examples:
 user: launch notepad
@@ -64,6 +70,8 @@ user: open youtube
 {"plan": [{"action": "open_url", "args": {"url": "https://youtube.com"}}]}
 user: open nature
 {"plan": [{"action": "web_search", "args": {"query": "nature"}}]}
+user: pause the song
+{"plan": [{"action": "media_control", "args": {"command": "play_pause"}}]}
 user: open youtube and set the volume to 20
 {"plan": [{"action": "open_url", "args": {"url": "https://youtube.com"}},
           {"action": "set_volume", "args": {"level": 20}}]}
@@ -72,6 +80,12 @@ user: dark mode and volume to 40
           {"action": "set_volume", "args": {"level": 40}}]}
 user: delete my downloads folder
 {"plan": []}
+user: format my d drive
+{"plan": []}
+user: uninstall microsoft edge
+{"plan": []}
+user: bring the chrome window to the front
+{"plan": [{"action": "focus_app", "args": {"title": "chrome"}}]}
 
 The service menu (argument values shown are the ONLY ones allowed):
 """
