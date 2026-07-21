@@ -62,6 +62,7 @@ class Session:
         self._subscribers: list[queue.Queue] = []
         self._gates: dict[str, tuple] = {}
         self._motion = None
+        self._gestures = None     # webcam gesture watch — opened only on request
         self._pending_steps = None
         self._muted = False       # "mute" silences his voice; "unmute" restores it
         self._recorder = None     # hold-to-talk recorder, when a key is held
@@ -419,6 +420,56 @@ class Session:
         else:
             self.say(f"I don't recognise '{name}', sir.")
 
+    def _on_gesture(self, name: str) -> None:
+        """A recognised gesture never acts on its own: it resolves its bound
+        phrase through the ordinary pipeline and is always confirmed, because a
+        gesture is a low-precision input. A sealed plan still needs the seal."""
+        from . import fieldlog, gestures
+        from .gate import describe
+        phrase = gestures.phrase_for(name)
+        if not phrase:
+            self.say(f"The {name} gesture isn't bound to anything, sir.")
+            return
+        if not self._try_begin():
+            return
+        try:
+            self.say(f'Gesture "{name}" → "{phrase}"')
+            steps = self._plan_for(phrase)
+            self.say("He would:")
+            for step in steps:
+                self.say("  - " + describe(step))
+            summary = "; ".join(describe(s) for s in steps)
+            if not self._ask_page("confirm", summary):
+                self.say("Very well, sir — I'll leave it.")
+                return
+            # confirmed by hand; a Tier-3 plan must still be sealed
+            gate = Etiquette(confirm=lambda s: True,
+                             seal=lambda s: self._ask_page("seal", s))
+            self._execute(steps, f"gesture:{name}", gate)
+            fieldlog.record(outcome="gesture", raw=name, detail=phrase)
+        except Refusal as refusal:
+            self.say(str(refusal))
+        except Exception as error:
+            self.say(f"My apologies, sir — {type(error).__name__}: {error}")
+        finally:
+            self._turn.release()
+
+    def gestures(self, enable: bool) -> None:
+        if enable and self._gestures is None:
+            try:
+                from .gestures import Watch
+                watch = Watch(on_gesture=self._on_gesture)
+                watch.start()
+                self._gestures = watch
+                self.say("The camera is open for gestures, sir — "
+                         "closed again the moment you switch it off.")
+            except RuntimeError as error:
+                self.say(str(error))
+        elif not enable and self._gestures is not None:
+            self._gestures.stop()
+            self._gestures = None
+            self.say("The camera is closed, sir.")
+
     def motion(self, enable: bool) -> None:
         if enable and self._motion is None:
             try:
@@ -541,6 +592,9 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                                  args=(str(body.get("name", "")),), daemon=True).start()
             elif route == "/api/motion":
                 session.motion(bool(body.get("enable")))
+            elif route == "/api/gestures":
+                threading.Thread(target=session.gestures,
+                                 args=(bool(body.get("enable")),), daemon=True).start()
             elif route == "/api/settings":
                 from . import settings, voice
                 from .summon import parse_hotkey

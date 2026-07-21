@@ -274,6 +274,36 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
             print(f"Apps on the menu ({len(config.ALLOWED_APPS)}):")
             for name in sorted(config.ALLOWED_APPS):
                 print("  " + name)
+    elif command == "gestures":
+        from . import gestures
+        if rest[:1] == ["setup"]:
+            print("Fetching the hand model, sir…")
+            gestures.download_model()
+            print(f"Ready: {gestures.MODEL_FILE}")
+        elif not gestures.available():
+            print("The [vision] extra isn't installed, sir "
+                  "(pip install -e .[vision]).")
+        else:
+            import time
+            bindings = gestures.load_bindings()["bindings"]
+            print("Bound gestures: " + ", ".join(f"{g} -> {p}" for g, p in bindings.items()))
+            print("Watching (Ctrl+C to stop). This is a test — nothing is executed.")
+            seen = []
+
+            def show(name: str) -> None:
+                seen.append(name)
+                print(f"  seen: {name:<10} -> {bindings.get(name) or '(unbound)'}")
+
+            watch = gestures.Watch(on_gesture=show)
+            watch.start()
+            try:
+                while True:
+                    time.sleep(0.2)
+            except KeyboardInterrupt:
+                pass
+            finally:
+                watch.stop()
+                print(f"\nCamera released, sir. {len(seen)} gesture(s) recognised.")
     elif command == "fieldlog":
         from . import fieldlog
         if rest[:1] == ["clear"]:

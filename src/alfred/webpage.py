@@ -169,6 +169,8 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
   <button data-cmd="fieldlog" title="what you tested: mishears, refusals, errors">field log</button>
   <label title="webcam rings the stop bell on a big wave — never commands">
    <input type="checkbox" id="motion"> &#128247; motion bell</label>
+  <label title="webcam reads hand gestures on demand; every gesture is confirmed before it acts">
+   <input type="checkbox" id="gestures"> &#128400; gestures</label>
   <span style="color:var(--cy-dim);font-size:.7rem;letter-spacing:.12em">
    &#9000; CTRL+ALT+C summons this HUD anywhere</span>
   <button id="cog" style="margin-left:auto" title="settings">&#9881; settings</button>
@@ -255,6 +257,7 @@ addEventListener("keyup",(e)=>{ const k = e.key.toLowerCase(); if(!HOLD.includes
 say("__GREETING__", false);  // the boot line (audio is spoken server-side)
 document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>post("/api/command",{name:b.dataset.cmd}));
 document.getElementById("motion").onchange = (e)=>post("/api/motion",{enable:e.target.checked});
+document.getElementById("gestures").onchange = (e)=>post("/api/gestures",{enable:e.target.checked});
 document.getElementById("cog").onclick = ()=>{ location.href = "/settings?t="+TOKEN; };
 say("Good day, sir. All systems at your disposal.");
 </script></body></html>"""
