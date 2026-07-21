@@ -197,6 +197,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
   <button data-cmd="ledger">ledger</button><button data-cmd="burn">burn</button>
   <button data-cmd="fieldlog" title="what you tested: mishears, refusals, errors">field log</button>
   <button data-cmd="tabs" title="audit exactly which tabs I can see">tabs</button>
+  <button data-cmd="privacy" title="everything I know about you, and where it sits">privacy</button>
   <button data-cmd="forgettabs" title="wipe my view of your browser at once">forget tabs</button>
   <label title="webcam rings the stop bell on a big wave — never commands">
    <input type="checkbox" id="motion"> &#128247; motion bell</label>
