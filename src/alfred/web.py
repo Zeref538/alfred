@@ -154,6 +154,7 @@ class Session:
         self._hold_timer = None
         self.global_keys = False  # set when the global chord is armed
         self._pairing = False     # a bridge pairing request is on screen
+        self._conversing = False  # a conversation is open until 'thank you'
         self._since = time.monotonic()
         from . import tabs
         tabs.set_emitter(self.emit)  # the extension hears switches on the SSE
@@ -397,13 +398,57 @@ class Session:
         self._hold_timer.daemon = True
         self._hold_timer.start()
 
+    def converse(self) -> None:
+        """Hold a conversation rather than take a single order.
+
+        One press opens it; after that he keeps listening, waiting for a pause
+        to know you've finished, until you say thank you. The turn lock is held
+        for the whole exchange, so nothing else can talk over it.
+        """
+        from . import voice
+        if not self._try_begin():
+            return
+        self._conversing = True
+        try:
+            self.say("I'm listening, sir — say “thank you” when you're done.")
+            while self._conversing:
+                self.emit(type="state", state="listening")
+                try:
+                    audio = voice.record_until_silence()
+                finally:
+                    self.emit(type="state", state="idle")
+                if not len(audio):          # nothing said; he stops waiting
+                    self.say("I'll leave you to it, sir.")
+                    break
+                if self._process_audio(audio):   # True once thanked
+                    break
+        except Exception as error:
+            self.say(f"My apologies, sir — {type(error).__name__}: {error}")
+        finally:
+            self._conversing = False
+            self.emit(type="state", state="idle")
+            self._turn.release()
+
+    def conversing(self) -> bool:
+        return self._conversing
+
+    def end_conversation(self) -> None:
+        self._conversing = False
+
     def listening(self) -> bool:
         """The truth about whether the mic is open — the global chord asks this
         rather than keeping its own flag, which is how it got stuck before."""
         return self._recorder is not None
 
     def toggle_listening(self) -> None:
-        (self.hold_stop if self.listening() else self.hold_start)()
+        """The chord opens a conversation, or closes one already open — so a
+        whole exchange costs one press at each end, not one per sentence."""
+        if self._conversing:
+            self.end_conversation()
+        elif self.listening():
+            self.hold_stop()
+        else:
+            self.converse()
 
     def hold_stop(self) -> None:
         recorder, self._recorder = self._recorder, None  # whoever wins, stops it once
@@ -430,7 +475,7 @@ class Session:
         self.say(f'Heard: "{raw}"')
         if not raw:
             fieldlog.record(outcome="empty", raw="")
-            return
+            return False
         # his own name is how he's addressed, not part of the order — drop it
         # before the corrector or the planner can mistake it for the object
         addressed = _strip_wake(raw)
@@ -438,7 +483,7 @@ class Session:
             self.say("You have my attention, sir.")
             self._speak("You have my attention, sir.")
             fieldlog.record(outcome="empty", raw=raw, detail="name only")
-            return
+            return False
         from .planner import correct_transcript
         transcript = correct_transcript(addressed)
         if transcript != raw:
@@ -448,28 +493,33 @@ class Session:
             self.ring_bell("spoken")
             self._speak(voice.stand_down())
             fieldlog.record(outcome="bell", raw=raw, corrected=transcript)
-            return
+            return True          # the bell closes the conversation too
+        if voice.is_thanks(transcript):
+            self.say("Very good, sir.")
+            self._speak(voice.nod())
+            fieldlog.record(outcome="thanks", raw=raw, corrected=transcript)
+            return True
         # the bell always works; everything past here needs a hearing we trust
         if not voice.is_confident(logprob, no_speech):
             if not self._confirm_doubtful_hearing(raw, transcript, logprob, no_speech):
-                return
+                return False
         if voice.is_undo(transcript):
             self._undo_spoken()
             fieldlog.record(outcome="undo", raw=raw, corrected=transcript)
-            return
+            return False
         if voice.is_unmute(transcript):
             self._muted = False
             self.say("Voice restored, sir.")
             self._speak("Voice restored, sir.")
             fieldlog.record(outcome="unmute", raw=raw, corrected=transcript)
-            return
+            return False
         if voice.is_mute(transcript):
             self._muted = True
             self.say("Muted, sir — say 'unmute' to bring me back.")
             fieldlog.record(outcome="mute", raw=raw, corrected=transcript)
-            return
+            return False
         if self._maybe_clearance(transcript, spoken=True):  # "I confirm Alfred, ..."
-            return
+            return False
         # resolve first, so the user approves the PLAN, not just the words
         from .gate import describe
         try:
@@ -480,7 +530,7 @@ class Session:
             fieldlog.record(outcome="refusal", raw=raw, corrected=transcript,
                             detail=str(refusal))
             self._offer_search_fallback(raw, transcript)  # don't dead-end — ask first
-            return
+            return False
         finally:
             self.emit(type="state", state="idle")
         # show the plan on the panel — never speak it back; the yes scales to tier
@@ -497,7 +547,7 @@ class Session:
             fieldlog.record(outcome="loose", raw=raw, corrected=transcript,
                             detail="; ".join(describe(s) for s in self._pending_steps))
             if not self._confirm_loose_plan(transcript):
-                return
+                return False
         try:
             if tier <= Tier.ANNOUNCED:  # nothing consequential — just do it
                 self.emit(type="state", state="working")
@@ -528,6 +578,7 @@ class Session:
         finally:
             self._pending_steps = None
             self.emit(type="state", state="idle")
+        return False
 
     def _confirm_loose_plan(self, transcript: str) -> bool:
         """He heard you clearly and found something to do — but it doesn't

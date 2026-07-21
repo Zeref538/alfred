@@ -56,22 +56,29 @@ def test_tap_debounces_autorepeat_but_rearms():
 
 def test_toggle_reads_real_state_not_a_remembered_flag(tmp_path):
     # the live failure: a remembered flag desynced and the chord stuck forever.
-    # toggle_listening must decide from whether the recorder actually exists.
+    # every branch must be decided from what is actually true right now.
     from alfred.executor import Executor
     from alfred.ledger import Ledger
     from alfred.undo import UndoManager
     from alfred.web import Session
     session = Session(executor=Executor({}, Ledger(root=tmp_path), UndoManager()))
     calls = []
-    session.hold_start = lambda: calls.append("start")
+    session.converse = lambda: calls.append("converse")
     session.hold_stop = lambda: calls.append("stop")
-    assert not session.listening()
+
+    assert not session.conversing() and not session.listening()
     session.toggle_listening()
-    assert calls == ["start"]
-    session._recorder = object()          # the mic is genuinely open now
+    assert calls == ["converse"]          # idle -> open a conversation
+
+    session._conversing = True            # one is genuinely open
+    session.toggle_listening()
+    assert not session.conversing()       # -> the press closes it
+    assert calls == ["converse"]          # and nothing else was started
+
+    session._recorder = object()          # a single hold is in flight instead
     assert session.listening()
     session.toggle_listening()
-    assert calls == ["start", "stop"]
+    assert calls == ["converse", "stop"]
 
 
 def test_other_keys_are_ignored():
