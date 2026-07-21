@@ -41,7 +41,7 @@ from . import voice as _voice  # light at import; the models load lazily
 
 # One boot line per summoning — chosen now so the page and the voice agree.
 GREETING = _voice.greeting()
-MAX_HOLD_SECONDS = 30  # a stuck key can't hold the mic open forever
+MAX_HOLD_SECONDS = 20  # backstop for a forgotten second press; also self-heals
 IDLE_GRACE_SECONDS = 3.0  # after the last window closes, dismiss himself
 
 # How whisper actually renders his name when addressed. "alfredo" is spared
@@ -260,6 +260,14 @@ class Session:
         self._hold_timer = threading.Timer(MAX_HOLD_SECONDS, self.hold_stop)
         self._hold_timer.daemon = True
         self._hold_timer.start()
+
+    def listening(self) -> bool:
+        """The truth about whether the mic is open — the global chord asks this
+        rather than keeping its own flag, which is how it got stuck before."""
+        return self._recorder is not None
+
+    def toggle_listening(self) -> None:
+        (self.hold_stop if self.listening() else self.hold_start)()
 
     def hold_stop(self) -> None:
         recorder, self._recorder = self._recorder, None  # whoever wins, stops it once
@@ -792,8 +800,8 @@ def main() -> int:
     if globalkeys.available():
         try:  # slow work in threads — never block the system-wide keyboard hook
             globalkeys.watch(
-                lambda: threading.Thread(target=session.hold_start, daemon=True).start(),
-                lambda: threading.Thread(target=session.hold_stop, daemon=True).start())
+                lambda: threading.Thread(target=session.toggle_listening,
+                                         daemon=True).start())
             session.global_keys = True  # the page stands down; the latch covers it
             chord = "+".join(k.upper() for k in globalkeys.hold_keys())
             print(f"Global {chord} armed — press to listen, press again to send.",

@@ -49,23 +49,33 @@ class Chord:
             self.on_stop()
 
 
-class Latch:
-    """Push once to begin, push again to send.
+REARM_SECONDS = 0.6
 
-    Hold-to-talk proved unworkable globally: the key-release could arrive
-    before the microphone had finished opening, leaving the mic latched open
-    with nothing to close it. A toggle is driven only by chord *engagements*,
-    which are separated by a human interval, so the race cannot happen.
+
+class Tap:
+    """Debounce for the chord.
+
+    Nothing here may depend on key *releases*: in practice they don't reach us,
+    which is what broke both hold-to-talk (nothing closed the mic) and the
+    first latch (the chord stayed forever engaged, so a second press did
+    nothing). A tap is accepted only once per re-arm window, so a held chord
+    that auto-repeats still counts as one press.
     """
 
-    def __init__(self, on_begin, on_end):
-        self.on_begin = on_begin
-        self.on_end = on_end
-        self.listening = False
+    def __init__(self, on_tap, interval: float = REARM_SECONDS, clock=None):
+        import time
+        self.on_tap = on_tap
+        self.interval = interval
+        self.clock = clock or time.monotonic
+        self.last = float("-inf")
 
-    def engage(self) -> None:
-        self.listening = not self.listening
-        (self.on_begin if self.listening else self.on_end)()
+    def tap(self) -> bool:
+        now = self.clock()
+        if now - self.last < self.interval:
+            return False
+        self.last = now
+        self.on_tap()
+        return True
 
 
 def available() -> bool:
@@ -90,35 +100,45 @@ def diagnose(seconds: int = 15) -> int:
         return 1
     import keyboard
     keys = hold_keys()
-    print(f"Watching for the {'+'.join(k.upper() for k in keys)} chord "
-          f"for {seconds}s. Press some keys, sir.")
-    pressed, fired = [], []
-    chord = Chord(keys, lambda: fired.append("start"), lambda: fired.append("stop"))
-    keyboard.on_press(lambda e: (pressed.append((e.name or "").lower()),
-                                 chord.press((e.name or "").lower())))
-    keyboard.on_release(lambda e: chord.release((e.name or "").lower()))
+    combo = "+".join(keys)
+    print(f"Watching for {seconds}s, sir. Tap {combo.upper()} a few times, "
+          "and press some other keys too.")
+    downs, ups, fired = [], [], []
+    keyboard.on_press(lambda e: downs.append((e.name or "").lower()))
+    keyboard.on_release(lambda e: ups.append((e.name or "").lower()))
+    tap = Tap(lambda: fired.append(1))
+    keyboard.add_hotkey(combo, tap.tap, trigger_on_release=False, suppress=False)
     time.sleep(seconds)
-    if not pressed:
-        print("The hook saw NO keys at all — this process isn't receiving global "
-              "key events (no interactive desktop, or another tool owns the hook).")
+
+    print(f"key-down events seen: {len(downs)}  {sorted(set(downs))[:10]}")
+    print(f"key-UP   events seen: {len(ups)}  {sorted(set(ups))[:10]}")
+    print(f"{combo.upper()} fired: {len(fired)} time(s)")
+    if not downs:
+        print("\nVerdict: no global key events at all — this process has no "
+              "interactive desktop, or another tool owns the hook.")
         return 1
-    print(f"The hook saw {len(pressed)} key events: {sorted(set(pressed))[:12]}")
+    if not ups:
+        print("\nVerdict: presses arrive but RELEASES do not. That is exactly "
+              "what broke hold-to-talk; the chord now avoids depending on them.")
     if fired:
-        print(f"The chord fired {len(fired)} time(s) — global hold-to-talk works.")
+        print("\nVerdict: the chord fires — global press-to-listen works.")
         return 0
-    print(f"But the {'+'.join(keys)} chord never fired — hold BOTH keys down "
-          "together (not one after the other).")
+    print(f"\nVerdict: keys arrive but {combo.upper()} never fired. Press both "
+          "together, sir; if it still never fires the hotkey is being swallowed.")
     return 1
 
 
-def watch(on_start, on_stop) -> None:
-    """Arm the global chord as a latch: press it to begin listening, press it
-    again to send. on_start/on_stop must return quickly — wrap any slow work
-    (recording, transcription) in a thread so the system-wide keyboard hook is
-    never blocked."""
+def watch(on_toggle) -> None:
+    """Arm the global chord: press it to begin listening, press it again to
+    send. `on_toggle` decides which of the two it is by asking what is actually
+    happening — never by remembering, which is how the state got stuck before.
+
+    It must return quickly: wrap slow work (recording, transcription) in a
+    thread so the system-wide keyboard hook is never blocked.
+    """
     import keyboard
-    latch = Latch(on_start, on_stop)
-    # only engagements matter now; releasing the keys does nothing
-    chord = Chord(hold_keys(), latch.engage, lambda: None)
-    keyboard.on_press(lambda e: chord.press((e.name or "").lower()))
-    keyboard.on_release(lambda e: chord.release((e.name or "").lower()))
+    tap = Tap(on_toggle)
+    # keyboard's own hotkey machinery owns the key state, so we never depend
+    # on receiving releases ourselves
+    keyboard.add_hotkey("+".join(hold_keys()), tap.tap,
+                        trigger_on_release=False, suppress=False)
