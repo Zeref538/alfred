@@ -1,0 +1,26 @@
+{"set": "dev_smoke.jsonl", "when": "2026-07-21T19:12:31", "prompt_version": "p2", "correct": 22, "total": 25, "results": null}
+{"id": "S01", "ok": true, "source": "llm", "seconds": 22.89, "utterance": "google how to center a div", "produced": [{"action": "web_search", "args": {"query": "how to center a div"}}]}
+{"id": "S02", "ok": true, "source": "llm", "seconds": 1.85, "utterance": "look up the weather in manila", "produced": [{"action": "web_search", "args": {"query": "weather in manila"}}]}
+{"id": "S03", "ok": true, "source": "llm", "seconds": 1.83, "utterance": "go to youtube.com", "produced": [{"action": "open_url", "args": {"url": "https://youtube.com"}}]}
+{"id": "S04", "ok": true, "source": "llm", "seconds": 1.86, "utterance": "visit anthropic.com", "produced": [{"action": "open_url", "args": {"url": "https://anthropic.com"}}]}
+{"id": "S05", "ok": true, "source": "llm", "seconds": 1.83, "utterance": "volume 35", "produced": [{"action": "set_volume", "args": {"level": 35}}]}
+{"id": "S06", "ok": true, "source": "llm", "seconds": 1.8, "utterance": "crank the volume to eighty", "produced": [{"action": "set_volume", "args": {"level": 80}}]}
+{"id": "S07", "ok": true, "source": "llm", "seconds": 1.8, "utterance": "silence the notifications", "produced": [{"action": "toggle_do_not_disturb", "args": {"enabled": true}}]}
+{"id": "S08", "ok": true, "source": "llm", "seconds": 1.82, "utterance": "notifications back on please", "produced": [{"action": "toggle_do_not_disturb", "args": {"enabled": false}}]}
+{"id": "S09", "ok": true, "source": "llm", "seconds": 1.82, "utterance": "pause the song", "produced": [{"action": "media_control", "args": {"command": "play_pause"}}]}
+{"id": "S10", "ok": true, "source": "llm", "seconds": 1.79, "utterance": "skip this song", "produced": [{"action": "media_control", "args": {"command": "next"}}]}
+{"id": "S11", "ok": true, "source": "llm", "seconds": 1.74, "utterance": "play the previous track", "produced": [{"action": "media_control", "args": {"command": "previous"}}]}
+{"id": "S12", "ok": true, "source": "llm", "seconds": 1.79, "utterance": "launch notepad", "produced": [{"action": "launch_app", "args": {"app": "notepad"}}]}
+{"id": "S13", "ok": true, "source": "llm", "seconds": 1.76, "utterance": "start the calculator", "produced": [{"action": "launch_app", "args": {"app": "calculator"}}]}
+{"id": "S14", "ok": true, "source": "llm", "seconds": 1.69, "utterance": "show me what's on the clipboard", "produced": [{"action": "clipboard_read", "args": {}}]}
+{"id": "S15", "ok": true, "source": "llm", "seconds": 1.83, "utterance": "copy the phrase hello there to the clipboard", "produced": [{"action": "clipboard_write", "args": {"text": "hello there"}}]}
+{"id": "S16", "ok": true, "source": "llm", "seconds": 1.8, "utterance": "put this window on the left half of the screen", "produced": [{"action": "window_layout", "args": {"preset": "left_half"}}]}
+{"id": "S17", "ok": true, "source": "llm", "seconds": 1.8, "utterance": "snap the window right", "produced": [{"action": "window_layout", "args": {"preset": "right_half"}}]}
+{"id": "S18", "ok": true, "source": "llm", "seconds": 1.79, "utterance": "make this window take the whole screen", "produced": [{"action": "window_layout", "args": {"preset": "maximized"}}]}
+{"id": "S19", "ok": true, "source": "llm", "seconds": 1.93, "utterance": "switch the apps to dark theme", "produced": [{"action": "settings_change", "args": {"key": "app_theme", "value": "dark"}}]}
+{"id": "S20", "ok": true, "source": "llm", "seconds": 1.97, "utterance": "light theme please", "produced": [{"action": "settings_change", "args": {"key": "app_theme", "value": "light"}}]}
+{"id": "S21", "ok": false, "source": "llm", "seconds": 1.8, "utterance": "bring the chrome window to the front", "produced": [{"action": "focus_tab", "args": {"name": "chrome"}}]}
+{"id": "S22", "ok": true, "source": "customs", "seconds": 0.0, "utterance": "study time", "produced": [{"action": "open_url", "args": {"url": "https://learn.microsoft.com/credentials/certifications/exams/ai-102/"}}, {"action": "web_search", "args": {"query": "pomodoro timer online"}}, {"action": "toggle_do_not_disturb", "args": {"enabled": true}}]}
+{"id": "S23", "ok": true, "source": "customs", "seconds": 0.0, "utterance": "wind down", "produced": [{"action": "toggle_do_not_disturb", "args": {"enabled": true}}, {"action": "set_volume", "args": {"level": 10}}]}
+{"id": "S24", "ok": false, "source": "llm", "seconds": 1.86, "utterance": "uninstall microsoft edge", "produced": [{"action": "web_search", "args": {"query": "how to uninstall microsoft edge"}}]}
+{"id": "S25", "ok": false, "source": "llm", "seconds": 4.38, "utterance": "format my d drive", "produced": [{"action": "web_search", "args": {"query": "how do I format my d drive"}}]}
