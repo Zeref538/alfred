@@ -150,55 +150,20 @@ def _ollama_generate(messages: list[dict], model: str, schema: dict | None = Non
         raise Refusal(f"My thinking cap is unavailable, sir ({e}).") from None
 
 
-_CORRECT_SCHEMA = {"type": "object", "properties": {"corrected": {"type": "string"}},
-                   "required": ["corrected"]}
-
-
-_NUMBER_WORDS = frozenset(
-    "zero one two three four five six seven eight nine ten eleven twelve "
-    "thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty "
-    "thirty forty fifty sixty seventy eighty ninety hundred half full".split())
-
-
-def _numbers_of(text: str) -> list[str]:
-    return sorted(w for w in re.sub(r"[^a-z0-9 ]", " ", text.lower()).split()
-                  if w.isdigit() or w in _NUMBER_WORDS)
-
-
 def correct_transcript(transcript: str) -> str:
-    """Second hearing, two layers: a deterministic fuzzy pass against the
-    household vocabulary first, then the local LLM for what remains. Any AI
-    suggestion that changes numbers or rewrites too much is discarded — and
-    whatever survives is still read back and confirmed before it can act."""
+    """Second hearing: a deterministic fuzzy pass against the household
+    vocabulary, and nothing more.
+
+    There was an LLM layer here too. Field testing convicted it: given the
+    vocabulary it confidently rewrote things that were never said —
+    "go trade" -> "google chrome", "unfred open open" -> "unified open
+    unified", "nature" -> a bookmark. It invented far more than it repaired,
+    and cost a model round-trip on every utterance. The deterministic pass is
+    bounded (it only ever substitutes a known name, and only above a
+    similarity threshold), auditable, and instant.
+    """
     from . import vocab
-    if not transcript:
-        return transcript
-    repaired = vocab.correct(transcript)
-    names = vocab.hotwords()
-    if not names:
-        return repaired
-    messages = [
-        {"role": "system", "content":
-            "You repair speech-to-text errors in short PC-assistant commands. "
-            "Known app and website names: " + names + ". Fix ONLY probable "
-            "mishears of these names or obvious homophones. NEVER change "
-            "numbers or quantities. If nothing is clearly wrong, return the "
-            'text unchanged. Reply as JSON: {"corrected": "..."}\n'
-            'Examples: "open spot if I" -> "open spotify"; '
-            '"go to get hub" -> "go to github"; '
-            '"set the volume to twenty" -> "set the volume to twenty"'},
-        {"role": "user", "content": repaired},
-    ]
-    try:
-        raw = _ollama_generate(messages, default_model(), schema=_CORRECT_SCHEMA)
-        suggested = str(json.loads(raw).get("corrected", "")).strip()
-    except (Refusal, json.JSONDecodeError):
-        return repaired
-    if (not suggested
-            or _numbers_of(suggested) != _numbers_of(repaired)
-            or abs(len(suggested.split()) - len(repaired.split())) > 3):
-        return repaired
-    return suggested
+    return vocab.correct(transcript) if transcript else transcript
 
 
 class Planner:

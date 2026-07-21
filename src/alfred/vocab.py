@@ -25,6 +25,7 @@ import yaml
 from . import config
 
 VOCAB_FILE = config.DATA_DIR / "vocabulary.yaml"
+SHORTCUTS_FILE = config.DATA_DIR / "shortcuts.yaml"  # the master's own, never rescanned
 MAX_HOTWORDS = 40  # a short, speakable list; a long one hallucinates itself back
 
 _CHROMIUM_BOOKMARK_FILES = [
@@ -123,7 +124,9 @@ def speakable(term: str) -> str | None:
 
 def _speakable_terms() -> list[str]:
     """Bookmarked site names first — those are what the master actually says."""
-    terms, seen = list(load().get("sites", {})) + list(config.ALLOWED_APPS), []
+    terms = (list(load_shortcuts()) + list(load().get("sites", {}))
+             + list(config.ALLOWED_APPS))
+    seen = []
     for term in terms:
         name = speakable(term)
         if name and name not in seen:
@@ -185,6 +188,34 @@ _COMMON_SITES = {
 }
 
 
+_SPOKEN_DOMAIN = re.compile(
+    r"\b([a-z0-9][a-z0-9-]{1,30})\s*(?:\.|\bdot\b)\s*"
+    r"(com|net|org|io|gg|tv|co|dev|ph|uk)\b")
+_PATH_FILLER = re.compile(r"^(?:and|then|the|a|an)\s+")
+
+
+def url_lookup(utterance: str) -> str | None:
+    """'open chess.com slash daily puzzles' -> https://chess.com/daily-puzzles.
+
+    A spoken domain is unambiguous, and the planner was throwing the domain
+    away and searching the leftovers ("slash daily puzzles")."""
+    said = re.sub(r"[^a-z0-9 .-]", " ", utterance.lower())
+    said = re.sub(r"\s+", " ", said)
+    match = _SPOKEN_DOMAIN.search(said)
+    if not match:
+        return None
+    url = f"https://{match.group(1)}.{match.group(2)}"
+    rest = said[match.end():]
+    # "slash daily puzzles" -> /daily-puzzles ; a slug, joined as one usually is
+    slashed = re.split(r"\bslash\b|/", rest, maxsplit=1)
+    if len(slashed) > 1:
+        tail = _PATH_FILLER.sub("", slashed[1].strip())
+        words = [w for w in re.split(r"[ .]+", tail) if w]
+        if words:
+            url += "/" + "-".join(words)
+    return url
+
+
 _PLAY = re.compile(r"\bplay\b(.+)")
 _PLAY_SERVICES = {
     "spotify": "https://open.spotify.com/search/{}",
@@ -218,20 +249,63 @@ def play_lookup(utterance: str) -> str | None:
     return _PLAY_SERVICES[service].format(quote(subject))
 
 
+# Words that describe where a thing is, not which thing it is.
+_SITE_FILLER = re.compile(
+    r"\b(my|the|a|an|up|tab|tabs|page|pages|site|website|window|link|please)\b")
+
+
+def load_shortcuts() -> dict[str, str]:
+    """The master's own name -> URL pairs (~/.alfred/shortcuts.yaml).
+
+    Bookmarks only cover what he saved; the things he actually says are often
+    open *tabs*, which we can't see. So he can name them himself, and
+    `alfred learn` never touches this file."""
+    import yaml
+    if not SHORTCUTS_FILE.exists():
+        return {}
+    try:
+        doc = yaml.safe_load(SHORTCUTS_FILE.read_text(encoding="utf-8")) or {}
+        pairs = doc.get("shortcuts", doc)
+        return {str(k).lower(): str(v) for k, v in pairs.items()
+                if str(v).startswith(("http://", "https://"))}
+    except Exception:
+        return {}
+
+
+def remember(name: str, url: str) -> None:
+    import yaml
+    shortcuts = load_shortcuts()
+    shortcuts[name.strip().lower()] = url.strip()
+    SHORTCUTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SHORTCUTS_FILE.write_text(yaml.safe_dump({"shortcuts": shortcuts}, sort_keys=True),
+                              encoding="utf-8")
+
+
+def _best_name(wanted: str, names) -> str | None:
+    """Exact, then containment (the longest name that appears in what was
+    said), then fuzzy — so "my go trade investment tab" still finds "go trade"."""
+    names = list(names)
+    if wanted in names:
+        return wanted
+    inside = sorted((n for n in names if n and n in wanted), key=len, reverse=True)
+    if inside:
+        return inside[0]
+    hit = get_close_matches(wanted, names, n=1, cutoff=0.8)
+    return hit[0] if hit else None
+
+
 def site_lookup(utterance: str) -> str | None:
-    """'open my portfolio' / 'open youtube' -> a URL. The user's bookmarks are
-    tried first (their names win), then a table of well-known sites — both
-    fuzzy, so a small mishear still lands."""
+    """'open my go trade tab' / 'open youtube' -> a URL. The master's own
+    shortcuts win, then his bookmarks, then a table of well-known sites."""
     said = re.sub(r"[^a-z0-9 ]", "", utterance.lower()).strip()
     match = _OPEN_VERBS.match(said)
     if not match:
         return None
-    wanted = match.group(1).strip()
-    sites = load().get("sites", {})
-    hit = get_close_matches(wanted, list(sites), n=1, cutoff=0.8)
-    if hit:
-        return sites[hit[0]]
-    if wanted in _COMMON_SITES:
-        return _COMMON_SITES[wanted]
-    near = get_close_matches(wanted, list(_COMMON_SITES), n=1, cutoff=0.85)
-    return _COMMON_SITES[near[0]] if near else None
+    wanted = re.sub(r"\s+", " ", _SITE_FILLER.sub(" ", match.group(1))).strip()
+    if not wanted:
+        return None
+    for table in (load_shortcuts(), load().get("sites", {}), _COMMON_SITES):
+        name = _best_name(wanted, table)
+        if name:
+            return table[name]
+    return None
