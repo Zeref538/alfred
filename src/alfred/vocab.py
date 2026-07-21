@@ -317,7 +317,9 @@ def url_lookup(utterance: str) -> str | None:
     return known[host]  # no path spoken — his own entry, path and all
 
 
-_PLAY = re.compile(r"\bplay\b(.+)")
+# "play" may arrive fused to the next word — whisper gave us "playlofi beats".
+# Matching "play" followed by a space OR straight into a letter catches both.
+_PLAY = re.compile(r"\bplay(?:\s+|(?=[a-z]))(.+)")
 # Longest names first, so "disney plus" wins before "disney". Each lands on the
 # service's OWN search, which is what "play X on Y" actually means — a web
 # search for the title is not the same thing at all.
@@ -357,8 +359,9 @@ def play_lookup(utterance: str) -> str | None:
     match = _PLAY.search(said)
     if not match:
         return None
-    # cut the "... on <service>" tail first, so an "on" inside a title survives
-    subject = re.sub(rf"\b(?:on|in|at|with|using)?\s*{re.escape(service)}\b.*$",
+    # Remove only the service MENTION, not everything after it: "kd paint on
+    # spotify by post malone" must keep the artist, or the search is useless.
+    subject = re.sub(rf"\b(?:on|in|at|with|using|from)?\s*{re.escape(service)}\b",
                      " ", match.group(1))
     subject = _PLAY_FILLER.sub(" ", subject)
     subject = re.sub(r"[^a-z0-9 ]", " ", subject)
