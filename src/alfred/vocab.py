@@ -34,10 +34,14 @@ _CHROMIUM_BOOKMARK_FILES = [
     r"Microsoft\Edge\User Data\Default\Bookmarks",
     r"BraveSoftware\Brave-Browser\User Data\Default\Bookmarks",
 ]
+# Opera keeps its profile under Default\ — the bare path found almost nothing.
 _OPERA_BOOKMARK_FILES = [
+    r"Opera Software\Opera GX Stable\Default\Bookmarks",
+    r"Opera Software\Opera Stable\Default\Bookmarks",
     r"Opera Software\Opera GX Stable\Bookmarks",
     r"Opera Software\Opera Stable\Bookmarks",
 ]
+_OPERA_SIDE_PROFILES = r"Opera Software\Opera GX Stable\_side_profiles"
 
 
 def bookmark_files() -> list[Path]:
@@ -45,7 +49,122 @@ def bookmark_files() -> list[Path]:
     roaming = Path(os.environ.get("APPDATA", ""))
     candidates = [local / rel for rel in _CHROMIUM_BOOKMARK_FILES]
     candidates += [roaming / rel for rel in _OPERA_BOOKMARK_FILES]
+    side = roaming / _OPERA_SIDE_PROFILES
+    if side.is_dir():  # Opera GX keeps extra profiles here
+        candidates += list(side.glob("*/Default/Bookmarks"))
     return [p for p in candidates if p.is_file()]
+
+
+def history_files() -> list[Path]:
+    """Chromium history databases — where 'frequently visited' actually lives."""
+    return [p.parent / "History" for p in bookmark_files()
+            if (p.parent / "History").is_file()]
+
+
+_GENERIC_TITLES = frozenset(
+    "home inbox dashboard untitled new tab login sign in search overview".split())
+
+
+def _name_from_title(title: str) -> str | None:
+    """A page's title as something a person would say. Titles are messy —
+    "(1) Facebook", "Home - Chess.com", "Disney+ | A space to explore" — so the
+    counter is stripped and the most meaningful segment taken."""
+    text = re.sub(r"^\(\d+\)\s*", "", title or "")
+    parts = [p.strip() for p in re.split(r"\s[|\-–—·:]\s", text) if p.strip()]
+    if not parts:
+        return None
+    best = next((p for p in parts if p.lower() not in _GENERIC_TITLES), parts[0])
+    cleaned = re.sub(r"[^a-z0-9 ]", " ", best.lower())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned[:40] or None
+
+
+def _name_from_location(host: str, path: str) -> str | None:
+    """'chess.com' + '/daily' -> 'chess daily' — how the page is actually asked
+    for, which the title often isn't."""
+    site = re.sub(r"\.(com|net|org|io|tv|co|gg|ph|uk)$", "", host)
+    site = site.removeprefix("www.").removeprefix("app.").removeprefix("apps.")
+    site = re.sub(r"[^a-z0-9]+", " ", site).strip()
+    tail = [s for s in re.split(r"[/\-_]+", path.lower()) if s.isalpha() and len(s) > 2]
+    words = (site.split() + tail[-2:])[:4]
+    name = " ".join(dict.fromkeys(words)).strip()
+    return name or None
+
+
+# Pages that are none of Alfred's business, however often they are visited.
+# A search results page is a record of what the master WONDERED, which is far
+# more revealing than where he went; an auth callback is a credential in a URL.
+_PRIVATE_PATH = re.compile(
+    r"/(?:login|log-in|signin|sign-in|signup|register|auth|oauth|callback|"
+    r"logout|password|reset|verify|checkout|payment|billing|account/security)\b")
+_SEARCH_HOSTS = ("google.", "bing.", "duckduckgo.", "yahoo.", "search.")
+# names too vague to be worth a shortcut — they would hijack better matches
+_VAGUE_NAMES = frozenset("""
+    home inbox profile settings calendar tickets search results dashboard
+    account login page site web app new tab untitled document sheet form
+    google search video watch photos files drive mail
+""".split())
+
+
+def _history_rows(path: Path, min_visits: int) -> list[tuple]:
+    """(url, title, visits) from a live database, read via a copy."""
+    import shutil
+    import sqlite3
+    import tempfile
+    copy = Path(tempfile.mkdtemp()) / "history.db"
+    try:
+        shutil.copy2(path, copy)
+        db = sqlite3.connect(f"file:{copy}?mode=ro", uri=True)
+        rows = db.execute(
+            "SELECT url, title, visit_count FROM urls WHERE visit_count >= ? "
+            "ORDER BY visit_count DESC LIMIT 4000", (min_visits,)).fetchall()
+        db.close()
+        return rows
+    except Exception:
+        return []
+    finally:
+        copy.unlink(missing_ok=True)
+
+
+def learn_frequent(limit: int = 50, min_visits: int = 5) -> dict[str, str]:
+    """The pages the master actually lives in, named as he would say them.
+
+    Every history is merged and ranked together, so one busy side-profile
+    cannot crowd out the rest. What is deliberately left behind: search result
+    pages (a record of what he wondered, not where he went), sign-in and
+    payment paths, blinded hosts, and credential-bearing parameters.
+    """
+    from urllib.parse import urlsplit
+
+    from . import tabs
+    patterns = tabs._blind_patterns()
+    rows: list[tuple] = []
+    for path in history_files():
+        rows.extend(_history_rows(path, min_visits))
+    rows.sort(key=lambda r: r[2] or 0, reverse=True)
+
+    found: dict[str, str] = {}
+    for url, title, _visits in rows:
+        if len(found) >= limit:
+            break
+        split = urlsplit(str(url))
+        host = split.netloc.lower().removeprefix("www.")
+        if split.scheme not in ("http", "https") or not host:
+            continue
+        if tabs._blinded(host, patterns) or _PRIVATE_PATH.search(split.path.lower()):
+            continue
+        if any(host.startswith(s) or f".{s}" in f".{host}" for s in _SEARCH_HOSTS) \
+                and ("search" in split.path or "q=" in split.query):
+            continue  # what he searched for is not where he goes
+        query = tabs._safe_query(split.query)
+        where = f"{split.scheme}://{split.netloc}{split.path}" + (f"?{query}" if query else "")
+        for name in (_name_from_location(host, split.path),
+                     _name_from_title(str(title or ""))):
+            if (name and 3 <= len(name) <= 40 and name not in found
+                    and name not in _VAGUE_NAMES
+                    and not all(w in _VAGUE_NAMES for w in name.split())):
+                found[name] = where
+    return found
 
 
 def read_bookmarks(path: Path) -> dict[str, str]:
@@ -72,7 +191,9 @@ def read_bookmarks(path: Path) -> dict[str, str]:
 
 
 def build_vocabulary() -> dict:
-    sites: dict[str, str] = {}
+    # Most-visited pages first, then bookmarks over the top of them: a name the
+    # master chose himself should beat one derived from a page title.
+    sites: dict[str, str] = dict(learn_frequent())
     for path in bookmark_files():
         sites.update(read_bookmarks(path))
     vocabulary = {"sites": sites}
