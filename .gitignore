@@ -5,4 +5,30 @@ __pycache__/
 dist/
 build/
 .pytest_cache/
+
+# --- the master's own data -------------------------------------------------
+# Everything Alfred learns about a person lives in ~/.alfred, outside this
+# repository by design. These patterns are belt-and-braces: if DATA_DIR is ever
+# pointed at a checkout, or a file is copied in to be looked at, none of it can
+# be committed by accident.
 .alfred/
+*.token
+bridge.token
+hud.lock
+vocabulary.yaml      # bookmarks and most-visited pages, with their paths
+shortcuts.yaml       # privately named pages
+hearing.yaml         # personal mishearing corrections
+apps.yaml            # the installed-software roster
+customs.yaml         # personal routines and modes
+gestures.yaml
+tab_privacy.yaml
+fieldlog.jsonl       # spoken transcripts from real testing
+ledger/
+*.ledger.jsonl
+
+# personal media and scratch
+*.wav
+voices/
+models/
+screenshot*.png
+qr*.png

@@ -18,7 +18,7 @@ def clean(tmp_path, monkeypatch):
 
 
 REPORT = [
-    {"id": 1, "title": "GoTrade — Portfolio", "url": "https://ultra.heygotrade.com/portfolio?session=SECRET"},
+    {"id": 1, "title": "Ledger — Portfolio", "url": "https://ledger.example.com/portfolio?session=SECRET"},
     {"id": 2, "title": "YouTube", "url": "https://www.youtube.com/watch?v=abc123"},
     {"id": 3, "title": "My Bank — Accounts", "url": "https://mybank.com/accounts"},
 ]
@@ -30,7 +30,7 @@ def test_credentials_never_survive_the_door():
         assert "?" not in tab.host and "/" not in tab.host
         assert "SECRET" not in repr(tab)      # ?session=SECRET is dropped
     # the path is kept — it says WHICH page — but the credential is not
-    trade = next(t for t in tabs.VIEW.all() if "heygotrade" in t.host)
+    trade = next(t for t in tabs.VIEW.all() if "example" in t.host)
     assert trade.path == "/portfolio"
 
 
@@ -57,15 +57,15 @@ def test_paths_are_kept_but_credentials_filtered(url, expected):
 def test_hosts_are_reduced_to_a_bare_name():
     tabs.VIEW.update(REPORT)
     hosts = {t.host for t in tabs.VIEW.all()}
-    assert "ultra.heygotrade.com" in hosts
+    assert "ledger.example.com" in hosts
     assert "youtube.com" in hosts       # www. stripped
 
 
 def test_path_lets_him_tell_two_tabs_on_one_site_apart():
     tabs.VIEW.update([
-        {"id": 1, "title": "Zeref538", "url": "https://github.com/Zeref538"},
+        {"id": 1, "title": "octocat", "url": "https://github.com/octocat"},
         {"id": 2, "title": "Repositories",
-         "url": "https://github.com/Zeref538?tab=repositories"},
+         "url": "https://github.com/octocat?tab=repositories"},
     ])
     assert tabs.VIEW.match("github repositories").id == 2
 
@@ -77,15 +77,15 @@ def test_banking_is_blinded_by_default():
 
 
 def test_master_can_blind_his_own_hosts(tmp_path):
-    tabs.PRIVACY_FILE.write_text("never_see:\n  - '*heygotrade*'\n", encoding="utf-8")
+    tabs.PRIVACY_FILE.write_text("never_see:\n  - '*example*'\n", encoding="utf-8")
     tabs.VIEW.update(REPORT)
-    assert all("heygotrade" not in t.host for t in tabs.VIEW.all())
+    assert all("example" not in t.host for t in tabs.VIEW.all())
 
 
 def test_match_finds_a_tab_by_name_or_host():
     tabs.VIEW.update(REPORT)
-    assert tabs.VIEW.match("go trade").id == 1
-    assert tabs.VIEW.match("gotrade").id == 1
+    assert tabs.VIEW.match("ledger portfolio").id == 1
+    assert tabs.VIEW.match("ledger").id == 1
     assert tabs.VIEW.match("youtube").id == 2
     assert tabs.VIEW.match("something never opened") is None
 
@@ -96,7 +96,7 @@ def test_a_stale_view_is_not_used(monkeypatch):
     monkeypatch.setattr(tabs, "STALE_SECONDS", -1)  # everything is now old
     assert not tabs.VIEW.fresh()
     assert tabs.VIEW.all() == []
-    assert tabs.VIEW.match("go trade") is None
+    assert tabs.VIEW.match("ledger") is None
 
 
 def test_forget_is_immediate():
@@ -106,7 +106,7 @@ def test_forget_is_immediate():
 
 
 def test_spoken_tab_name_requires_the_word_tab():
-    assert tabs.spoken_tab_name("switch to my go trade tab") == "go trade"
+    assert tabs.spoken_tab_name("switch to my go ledger tab") == "go ledger"
     assert tabs.spoken_tab_name("open my youtube tab") == "youtube"
     # without "tab" this must NOT reach into the browser — it opens a page
     assert tabs.spoken_tab_name("open youtube") is None
@@ -155,5 +155,5 @@ def test_tab_titles_never_reach_the_planner_prompt():
     tabs.VIEW.update(REPORT)
     menu = menu_text()
     assert "focus_tab" in menu                 # the action exists
-    for leak in ("GoTrade", "heygotrade", "YouTube", "youtube.com"):
+    for leak in ("Ledger", "example", "YouTube", "youtube.com"):
         assert leak not in menu

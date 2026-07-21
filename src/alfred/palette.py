@@ -358,7 +358,7 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
             for name in sorted(config.ALLOWED_APPS):
                 print("  " + name)
     elif command == "remember":
-        # alfred remember go trade = https://ultra.heygotrade.com/portfolio
+        # alfred remember go ledger = https://ledger.example.com/portfolio
         from . import vocab
         phrase = " ".join(rest)
         name, sep, url = phrase.partition("=")
