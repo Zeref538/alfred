@@ -59,30 +59,30 @@ __PALETTE__
         var(--ink);
         color:var(--blu); font:14px Consolas, 'Cascadia Mono', monospace;
         min-height:100vh; display:flex; align-items:center; justify-content:center;
-        padding:1.6rem 1.2rem; }
+        padding:1.4rem 1.2rem; }
  body::after { content:""; position:fixed; inset:0; pointer-events:none;
         background:
         linear-gradient(rgba(79,214,255,.035) 1px, transparent 1px) 0 0/100% 46px,
         linear-gradient(90deg, rgba(79,214,255,.028) 1px, transparent 1px) 0 0/46px 100%; }
 
  /* --- three columns: cards, the voice, cards --------------------------- */
- #room { display:flex; gap:1.5rem; align-items:stretch;
-        width:min(1400px,100%); }
- .side { width:212px; flex:none; display:flex; flex-direction:column; gap:.75rem; }
+ #room { display:flex; gap:2rem; align-items:stretch;
+        width:100%; justify-content:space-between; }
+ .side { width:250px; flex:none; display:flex; flex-direction:column; gap:.8rem; }
 
  /* each reading is its own card, standing apart from the stage */
- .card { position:relative; padding:.7rem .8rem;
+ .card { position:relative; padding:.9rem 1rem;
         border:1px solid var(--line); background:var(--panel);
         box-shadow:0 0 26px rgba(160,107,255,.07); }
  .card::before { content:""; position:absolute; left:0; top:0; width:2px; height:100%;
         background:linear-gradient(180deg, var(--blu), transparent); }
- .card .name { font-size:.55rem; letter-spacing:.24em; text-transform:uppercase;
+ .card .name { font-size:.68rem; letter-spacing:.22em; text-transform:uppercase;
         color:var(--vio-dim); }
- .card .value { font-size:1.28rem; letter-spacing:.02em; color:var(--blu);
+ .card .value { font-size:1.75rem; letter-spacing:.02em; color:var(--blu);
         font-variant-numeric:tabular-nums; margin:.2rem 0 .3rem;
         text-shadow:0 0 12px var(--blu-glow); transition:color .3s; }
- .card .note { font-size:.56rem; letter-spacing:.1em; color:var(--vio-dim); }
- .track { height:5px; background:rgba(160,107,255,.10);
+ .card .note { font-size:.68rem; letter-spacing:.06em; color:var(--vio-dim); }
+ .track { height:7px; background:rgba(160,107,255,.10);
         border:1px solid rgba(160,107,255,.16); overflow:hidden; position:relative; }
  .fill { height:100%; width:100%; transform:scaleX(0); transform-origin:left;
         background:linear-gradient(90deg, var(--vio), var(--blu));
@@ -93,12 +93,12 @@ __PALETTE__
  .card.hot .fill { background:linear-gradient(90deg, #ff7a5c, var(--red)); }
  .card.hot .value { color:var(--red); text-shadow:0 0 12px rgba(255,90,110,.5); }
  .card.hot::before { background:linear-gradient(180deg, var(--red), transparent); }
- .rows { display:flex; flex-direction:column; gap:.28rem; margin-top:.15rem; }
+ .rows { display:flex; flex-direction:column; gap:.42rem; margin-top:.3rem; }
  .rows div { display:flex; justify-content:space-between; gap:.5rem;
-        font-size:.58rem; letter-spacing:.14em; text-transform:uppercase;
+        font-size:.7rem; letter-spacing:.1em; text-transform:uppercase;
         color:var(--vio-dim); }
  .rows b { color:var(--blu); text-transform:none; letter-spacing:.02em;
-        font-size:.66rem; text-align:right; }
+        font-size:.86rem; text-align:right; }
  .rows b.off { color:var(--vio-dim); }
  .rows b.live { color:var(--gold); text-shadow:0 0 8px rgba(255,198,92,.5); }
 
@@ -113,7 +113,7 @@ __PALETTE__
  .bl { bottom:-2px; left:-2px; border-right:0; border-top:0; }
  .br { bottom:-2px; right:-2px; border-left:0; border-top:0; }
 
- header { display:flex; align-items:center; gap:.9rem; }
+ header { display:flex; align-items:center; gap:.9rem; justify-content:center; }
  #reactor { width:44px; height:44px; border-radius:50%; position:relative; flex:none;
         background:radial-gradient(circle, #fff 0%, #cfe9ff 14%, var(--blu) 42%,
                    rgba(8,44,66,.92) 72%);
@@ -140,9 +140,9 @@ __PALETTE__
  #status { font-size:.62rem; color:var(--vio-dim); letter-spacing:.22em;
       margin-top:.25rem; text-transform:uppercase; }
  #status b { color:var(--blu); }
- #tabs { display:flex; gap:.35rem; margin-left:auto; }
- .tab { padding:.4rem .9rem; cursor:pointer; border:1px solid var(--line);
-      background:rgba(160,107,255,.05); font-size:.6rem; letter-spacing:.24em;
+ #tabs { display:flex; gap:.45rem; }
+ .tab { padding:.55rem 1.3rem; cursor:pointer; border:1px solid var(--line);
+      background:rgba(79,214,255,.05); font-size:.72rem; letter-spacing:.24em;
       text-transform:uppercase; color:var(--vio-dim);
       transition:color .25s, border-color .25s, background .25s, box-shadow .25s; }
  .tab:hover { color:var(--vio-soft); }
@@ -159,7 +159,7 @@ __PALETTE__
 
  /* the visualiser is a canvas: one element, drawn only when there is
     something to say, rather than dozens of animated boxes */
- #wave { display:block; width:100%; height:230px; }
+ #wave { display:block; width:100%; height:300px; }
  #sub { min-height:3rem; text-align:center; font-size:1.4rem; line-height:1.45;
       color:#f0f8ff; text-shadow:0 0 18px var(--blu-glow); padding:0 1rem;
       transition:opacity .3s; }
@@ -193,9 +193,16 @@ __PALETTE__
  .sign.seen { color:var(--gold); border-color:var(--gold); transform:translateY(-2px);
       box-shadow:0 0 18px rgba(255,198,92,.45); }
 
- #bar { display:flex; gap:.6rem; align-items:center; margin-top:auto;
-      padding-top:.9rem; flex-wrap:wrap; }
- #bell { font-size:.72rem; padding:.6rem 1.4rem; }
+ #bar { display:flex; gap:.9rem; align-items:center; margin-top:auto;
+      padding-top:1.1rem; flex-wrap:wrap; }
+ #bar #tabs { margin:0 auto; }
+ button svg { width:20px; height:20px; vertical-align:-5px; margin-right:.5rem; }
+ #bell { font-size:.86rem; padding:.7rem 1.5rem; color:var(--red);
+      border-color:rgba(255,90,110,.7); letter-spacing:.18em; }
+ #bell:hover { background:rgba(255,90,110,.12); color:#ff8b99;
+      box-shadow:0 0 20px rgba(255,90,110,.55); }
+ #cog { padding:.62rem .8rem; }
+ #cog svg { width:24px; height:24px; margin:0; }
  button { background:transparent; color:var(--blu); font:inherit; cursor:pointer;
       border:1px solid rgba(160,107,255,.45); padding:.55rem .85rem;
       letter-spacing:.12em; text-transform:uppercase; font-size:.68rem;
@@ -249,10 +256,6 @@ __PALETTE__
     <div class="wordmark">__LOGO__<h1>ALFRED</h1></div>
     <div id="status">systems <b id="state">nominal</b> · the gate is watching</div>
    </div>
-   <div id="tabs">
-    <div class="tab on" data-page="voice">◉ voice</div>
-    <div class="tab" data-page="video">▣ video</div>
-   </div>
   </header>
 
   <div id="who"><span class="me">you</span><span class="him">alfred</span></div>
@@ -277,10 +280,21 @@ __PALETTE__
   </div>
 
   <div id="bar">
-   <button id="bell" title="stop everything Alfred is doing">◼ stop</button>
+   <button id="bell" title="stop everything Alfred is doing">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"
+     fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="8.5" y="8.5"
+     width="7" height="7" rx="1.2" fill="currentColor"/></svg>stop</button>
+   <div id="tabs">
+    <div class="tab on" data-page="voice">◉ voice</div>
+    <div class="tab" data-page="video">▣ video</div>
+   </div>
    <label id="camtoggle" title="webcam reads hand gestures on demand; every gesture is confirmed">
     <input type="checkbox" id="gestures"> &#128400; camera</label>
-   <button id="cog" style="margin-left:auto" title="settings">&#9881;</button>
+   <button id="cog" style="margin-left:auto" title="settings">
+    <svg viewBox="0 0 24 24" aria-hidden="true" style="margin:0"><path fill="none"
+     stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"
+     d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8zM19.4 12l1.5-1.8-1.5-2.6-2.3.5-1.6-.9-.7-2.2h-3l-.7 2.2-1.6.9-2.3-.5-1.5 2.6L7.2 12l-1.5 1.8 1.5 2.6 2.3-.5 1.6.9.7 2.2h3l.7-2.2 1.6-.9 2.3.5 1.5-2.6z"/>
+    </svg></button>
   </div>
  </main>
 
@@ -340,38 +354,69 @@ function fit(){ const r = wave.getBoundingClientRect(), d = devicePixelRatio || 
   wave.width = Math.max(1, r.width * d); wave.height = Math.max(1, r.height * d);
   ctx.setTransform(d, 0, 0, d, 0, 0); }
 addEventListener("resize", fit);
-const PALETTE = { idle:["#5c6b93","#2b7f9e"], listening:["#ffc65c","#ff9a5c"],
-                  speaking:["#4fd6ff","#8f7bff"] };
+
+// A wireframe orb: rings of points laid on a disc, each ring turned a little
+// against the last so the spokes fall diagonally and read as a mesh. The rim
+// undulates on three sines of different speeds, so it never visibly repeats.
+const RINGS = 11, SPOKES = 58;
+const TOPCOL = { idle:"#4a5f86", listening:"#ffd27a", speaking:"#7ee6ff" };
+const BOTCOL = { idle:"#4a4470", listening:"#ff9a5c", speaking:"#9a7bff" };
+
+function wobble(a, t, ring){
+  return Math.sin(a * 3 + t * 1.10 + ring * 0.35)
+       + Math.sin(a * 7 - t * 1.45 + ring * 0.20) * 0.45
+       + Math.sin(a * 11 + t * 0.75) * 0.22;
+}
 function draw(){
-  const w = wave.clientWidth, h = wave.clientHeight, mid = h / 2;
+  const w = wave.clientWidth, h = wave.clientHeight;
+  const cx = w / 2, cy = h / 2;
   ctx.clearRect(0, 0, w, h);
-  energy += (target - energy) * 0.08;
-  phase += mode === "idle" ? 0.006 : 0.028;
-  const [a, b] = PALETTE[mode] || PALETTE.idle;
-  const paint = ctx.createLinearGradient(0, 0, w, 0);
-  paint.addColorStop(0, a); paint.addColorStop(1, b);
-  for (let layer = 0; layer < 3; layer++){
-    const depth = 1 - layer * 0.28;
-    ctx.beginPath();
-    for (let x = 0; x <= w; x += 3){
-      const p = x / w;
-      // a bell so the shape tapers to nothing at both ends, and three sines
-      // of different speeds so it never repeats visibly
-      const bell = Math.pow(Math.sin(Math.PI * p), 1.7);
-      const y = Math.sin(p * 11 + phase * 2.1 + layer)
-              + Math.sin(p * 19 - phase * 1.4 + layer * 2) * 0.55
-              + Math.sin(p * 5 + phase * 0.8) * 0.75;
-      const amp = bell * energy * (h * 0.34) * depth;
-      const py = mid + y * amp * 0.42;
-      x ? ctx.lineTo(x, py) : ctx.moveTo(x, py);
+  energy += (target - energy) * 0.07;
+  phase += mode === "idle" ? 0.005 : 0.022;
+  const base = Math.min(w, h) * 0.42;
+
+  const paint = ctx.createLinearGradient(0, cy - base, 0, cy + base);
+  paint.addColorStop(0, TOPCOL[mode] || TOPCOL.idle);
+  paint.addColorStop(1, BOTCOL[mode] || BOTCOL.idle);
+  ctx.strokeStyle = paint;
+  ctx.shadowColor = TOPCOL[mode] || TOPCOL.idle;
+
+  // the points, once — then drawn twice, as rings and as spokes
+  const grid = [];
+  for (let r = 0; r < RINGS; r++){
+    const spread = (r + 1) / RINGS;
+    const turn = r * 0.13;                       // the diagonal in the mesh
+    const ring = [];
+    for (let k = 0; k <= SPOKES; k++){
+      const a = (k / SPOKES) * Math.PI * 2 + turn;
+      // only the outer rings ripple much, as in a struck membrane
+      const swell = 1 + wobble(a, phase, r) * energy * 0.16 * (0.35 + spread);
+      const rad = base * spread * swell;
+      ring.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad * 0.92]);
     }
-    ctx.strokeStyle = paint;
-    ctx.globalAlpha = layer === 0 ? 0.95 : 0.30 - layer * 0.07;
-    ctx.lineWidth = layer === 0 ? 2.4 : 1.4;
-    ctx.shadowBlur = layer === 0 ? 18 : 0; ctx.shadowColor = a;
+    grid.push(ring);
+  }
+  for (let r = 0; r < RINGS; r++){
+    ctx.beginPath();
+    grid[r].forEach(([x, y], k) => k ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+    const outer = r === RINGS - 1;
+    ctx.globalAlpha = (outer ? 0.95 : 0.16 + 0.5 * (r / RINGS)) * (0.45 + energy * 0.55);
+    ctx.lineWidth = outer ? 1.7 : 0.7;
+    ctx.shadowBlur = outer ? 16 : 0;
     ctx.stroke();
   }
-  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 0.55;
+  ctx.globalAlpha = 0.13 + energy * 0.22;
+  for (let k = 0; k <= SPOKES; k += 1){
+    ctx.beginPath();
+    for (let r = 0; r < RINGS; r++){
+      const [x, y] = grid[r][k];
+      r ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
   raf = requestAnimationFrame(draw);
 }
 function startDrawing(){ if (!raf){ fit(); raf = requestAnimationFrame(draw); } }
