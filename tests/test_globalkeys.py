@@ -40,29 +40,38 @@ def test_extra_presses_do_not_refire():
     assert events == ["start", "stop"]
 
 
-def test_latch_toggles_begin_then_end():
-    from alfred.globalkeys import Latch
-    events = []
-    latch = Latch(lambda: events.append("begin"), lambda: events.append("end"))
-    latch.engage()
-    assert events == ["begin"] and latch.listening
-    latch.engage()
-    assert events == ["begin", "end"] and not latch.listening
-    latch.engage()
-    assert events == ["begin", "end", "begin"]
+def test_tap_debounces_autorepeat_but_rearms():
+    from alfred.globalkeys import Tap
+    now = [100.0]
+    taps = []
+    tap = Tap(lambda: taps.append(1), interval=0.6, clock=lambda: now[0])
+    assert tap.tap() and len(taps) == 1      # first press counts
+    now[0] += 0.05
+    assert not tap.tap() and len(taps) == 1  # auto-repeat while held: ignored
+    now[0] += 0.05
+    assert not tap.tap() and len(taps) == 1
+    now[0] += 1.0
+    assert tap.tap() and len(taps) == 2      # a genuine second press re-arms
 
 
-def test_latched_chord_ignores_release():
-    # the live failure: releasing the keys could beat the mic opening, so the
-    # latch is driven by engagements only
-    from alfred.globalkeys import Chord, Latch
-    events = []
-    latch = Latch(lambda: events.append("begin"), lambda: events.append("end"))
-    chord = Chord(("j", "k"), latch.engage, lambda: None)
-    for _ in range(2):                       # two full press-and-release cycles
-        chord.press("j"); chord.press("k")
-        chord.release("j"); chord.release("k")
-    assert events == ["begin", "end"]        # not four events, not zero
+def test_toggle_reads_real_state_not_a_remembered_flag(tmp_path):
+    # the live failure: a remembered flag desynced and the chord stuck forever.
+    # toggle_listening must decide from whether the recorder actually exists.
+    from alfred.executor import Executor
+    from alfred.ledger import Ledger
+    from alfred.undo import UndoManager
+    from alfred.web import Session
+    session = Session(executor=Executor({}, Ledger(root=tmp_path), UndoManager()))
+    calls = []
+    session.hold_start = lambda: calls.append("start")
+    session.hold_stop = lambda: calls.append("stop")
+    assert not session.listening()
+    session.toggle_listening()
+    assert calls == ["start"]
+    session._recorder = object()          # the mic is genuinely open now
+    assert session.listening()
+    session.toggle_listening()
+    assert calls == ["start", "stop"]
 
 
 def test_other_keys_are_ignored():
