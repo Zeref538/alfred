@@ -52,6 +52,32 @@ def test_site_lookup_fuzzy_matches_open_phrases(vocab_file, monkeypatch):
     assert vocab.site_lookup("open something unbookmarked") is None
 
 
+@pytest.mark.parametrize("junk", [
+    "IDLE (Python 3.14 64-bit)", "ImageMagick Web Pages", "Python 3.12 Manuals",
+    "AMD Software: Adrenalin Edition", "Application Verifier (x64)",
+    "MSI Afterburner Localization Reference", "b1", "x",
+])
+def test_unspeakable_start_menu_junk_is_rejected(junk):
+    # this is what whisper hallucinated back at us: version numbers and
+    # multi-word technical names must never become hotwords
+    assert vocab.speakable(junk) is None
+
+
+@pytest.mark.parametrize("good", ["Notepad", "Discord", "Google Chrome", "youtube"])
+def test_real_names_survive(good):
+    assert vocab.speakable(good) == good.lower()
+
+
+def test_hotwords_are_short_and_free_of_digits(vocab_file, monkeypatch):
+    vocab.VOCAB_FILE.write_text(
+        "sites:\n  youtube: https://youtube.com\n  netflix: https://netflix.com\n",
+        encoding="utf-8")
+    words = vocab.hotwords()
+    assert "youtube" in words and "netflix" in words
+    assert not any(ch.isdigit() for ch in words)
+    assert len(words.split(", ")) <= vocab.MAX_HOTWORDS
+
+
 def test_common_sites_open_without_the_model(vocab_file, monkeypatch):
     # no bookmarks — well-known sites still resolve deterministically
     vocab.VOCAB_FILE.write_text("sites: {}\n", encoding="utf-8")

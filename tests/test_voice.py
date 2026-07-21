@@ -63,6 +63,14 @@ def test_ordinary_speech_is_not_a_mute(heard):
     assert not is_mute(heard) and not is_unmute(heard)
 
 
+def test_confidence_gate():
+    from alfred.voice import is_confident
+    assert is_confident(-0.3, 0.05)       # a clear hearing
+    assert not is_confident(-2.4, 0.05)   # words, but whisper was guessing
+    assert not is_confident(-0.3, 0.95)   # confident-sounding noise: no speech
+    assert not is_confident(0.0, 1.0)     # nothing decoded at all
+
+
 @pytest.mark.parametrize("heard", ["undo", "Undo.", "undo that", "undo the last one"])
 def test_undo_word_is_caught(heard):
     from alfred.voice import is_undo
