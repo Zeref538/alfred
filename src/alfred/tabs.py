@@ -187,9 +187,18 @@ _TAB_PHRASE = re.compile(
     r"(?:my\s+|the\s+)?(.+?)\s*\btabs?\b")
 
 
+_ALSO_PLAY = re.compile(r"\btabs?\b.*\b(?:and\s+|then\s+)?play\b")
+
+
 def spoken_tab_name(utterance: str) -> str | None:
     match = _TAB_PHRASE.search(utterance.lower())
     if not match:
         return None
     name = re.sub(r"\s+", " ", match.group(1)).strip()
     return name or None
+
+
+def wants_play_after(utterance: str) -> bool:
+    """'switch to the disney plus tab and play' — the switch was obeyed and the
+    'and play' quietly dropped. It is a second step, so it becomes one."""
+    return bool(_ALSO_PLAY.search(utterance.lower()))
