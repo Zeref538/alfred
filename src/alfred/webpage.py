@@ -59,72 +59,55 @@ __PALETTE__
         var(--ink);
         color:var(--blu); font:14px Consolas, 'Cascadia Mono', monospace;
         min-height:100vh; display:flex; align-items:center; justify-content:center;
-        padding:2rem 1rem; }
- body::before { content:""; position:fixed; inset:0; pointer-events:none; z-index:2;
-        background:repeating-linear-gradient(0deg, rgba(255,255,255,.022) 0 1px,
-        transparent 1px 3px); opacity:.55; }
+        padding:1.6rem 1.2rem; }
  body::after { content:""; position:fixed; inset:0; pointer-events:none;
         background:
         linear-gradient(rgba(160,107,255,.045) 1px, transparent 1px) 0 0/100% 46px,
         linear-gradient(90deg, rgba(63,208,255,.035) 1px, transparent 1px) 0 0/46px 100%; }
 
- /* --- the instrument rail ------------------------------------------------ */
- /* the rails sit INSIDE the panel, flanking whichever page is showing —
-    they stay put while only the middle changes */
- #stagerow { display:flex; gap:1.5rem; align-items:stretch; }
- .rail { width:178px; flex:none; position:relative; padding:.2rem .1rem; }
- .rail h2 { font-size:.6rem; letter-spacing:.3em; color:var(--vio-dim);
-        text-transform:uppercase; margin-bottom:.9rem;
-        display:flex; align-items:center; gap:.5rem; }
- .rail h2::after { content:""; flex:1; height:1px;
-        background:linear-gradient(90deg, var(--line), transparent); }
- .gauge { margin-bottom:1rem; }
- .gauge .top { display:flex; justify-content:space-between; align-items:baseline;
-        font-size:.6rem; letter-spacing:.18em; text-transform:uppercase;
-        color:var(--vio-dim); margin-bottom:.35rem; }
- .gauge .top b { font-size:.78rem; letter-spacing:.04em; color:var(--blu);
-        font-variant-numeric:tabular-nums;
-        transition:color .3s; text-shadow:0 0 8px var(--blu-glow); }
- .gauge .sub { font-size:.56rem; letter-spacing:.1em; color:var(--vio-dim);
-        margin-top:.3rem; text-transform:none; }
- .track { height:7px; background:rgba(160,107,255,.10);
+ /* --- three columns: cards, the voice, cards --------------------------- */
+ #room { display:flex; gap:1.5rem; align-items:stretch;
+        width:min(1400px,100%); }
+ .side { width:212px; flex:none; display:flex; flex-direction:column; gap:.75rem; }
+
+ /* each reading is its own card, standing apart from the stage */
+ .card { position:relative; padding:.7rem .8rem;
+        border:1px solid var(--line); background:var(--panel);
+        box-shadow:0 0 26px rgba(160,107,255,.07); }
+ .card::before { content:""; position:absolute; left:0; top:0; width:2px; height:100%;
+        background:linear-gradient(180deg, var(--vio), transparent); }
+ .card .name { font-size:.55rem; letter-spacing:.24em; text-transform:uppercase;
+        color:var(--vio-dim); }
+ .card .value { font-size:1.28rem; letter-spacing:.02em; color:var(--blu);
+        font-variant-numeric:tabular-nums; margin:.2rem 0 .3rem;
+        text-shadow:0 0 12px var(--blu-glow); transition:color .3s; }
+ .card .note { font-size:.56rem; letter-spacing:.1em; color:var(--vio-dim); }
+ .track { height:5px; background:rgba(160,107,255,.10);
         border:1px solid rgba(160,107,255,.16); overflow:hidden; position:relative; }
- .fill { height:100%; width:100%;
-        transform:scaleX(0); transform-origin:left;
+ .fill { height:100%; width:100%; transform:scaleX(0); transform-origin:left;
         background:linear-gradient(90deg, var(--vio), var(--blu));
         box-shadow:0 0 12px var(--blu-glow);
         transition:transform .8s cubic-bezier(.22,1,.36,1), background .4s; }
- .gauge.warm .fill::after, .gauge.hot .fill::after { content:""; position:absolute; inset:0;
-        background:linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
-        animation:shine 2.6s linear infinite; }
- @keyframes shine { 0% { transform:translateX(-100%) } 100% { transform:translateX(100%) } }
- .gauge.warm .fill { background:linear-gradient(90deg, var(--gold), #ff9a5c); }
- .gauge.warm .top b { color:var(--gold); text-shadow:0 0 8px rgba(255,198,92,.5); }
- .gauge.hot .fill { background:linear-gradient(90deg, #ff7a5c, var(--red)); }
- .gauge.hot .top b { color:var(--red); text-shadow:0 0 8px rgba(255,90,110,.5); }
- .stat { display:flex; justify-content:space-between; align-items:baseline;
-        gap:.5rem; padding:.3rem 0; border-bottom:1px dotted rgba(160,107,255,.14);
-        font-size:.6rem; letter-spacing:.16em; text-transform:uppercase;
+ .card.warm .fill { background:linear-gradient(90deg, var(--gold), #ff9a5c); }
+ .card.warm .value { color:var(--gold); text-shadow:0 0 12px rgba(255,198,92,.5); }
+ .card.hot .fill { background:linear-gradient(90deg, #ff7a5c, var(--red)); }
+ .card.hot .value { color:var(--red); text-shadow:0 0 12px rgba(255,90,110,.5); }
+ .card.hot::before { background:linear-gradient(180deg, var(--red), transparent); }
+ .rows { display:flex; flex-direction:column; gap:.28rem; margin-top:.15rem; }
+ .rows div { display:flex; justify-content:space-between; gap:.5rem;
+        font-size:.58rem; letter-spacing:.14em; text-transform:uppercase;
         color:var(--vio-dim); }
- .stat b { color:var(--blu); letter-spacing:.02em; font-size:.7rem;
-        text-transform:none; text-align:right; text-shadow:0 0 8px var(--blu-glow); }
- .stat b.off { color:var(--vio-dim); text-shadow:none; }
- .stat b.live { color:var(--gold); text-shadow:0 0 8px rgba(255,198,92,.5); }
- #spark { display:flex; align-items:flex-end; gap:2px; height:34px; margin-top:.2rem;
-        border-bottom:1px solid var(--line); }
- #spark i { flex:1; height:100%; background:linear-gradient(180deg, var(--blu), var(--vio));
-        opacity:.75; transform:scaleY(.02); transform-origin:bottom;
-        transition:transform .5s ease; }
- @media (max-width:1080px) { #stagerow { flex-wrap:wrap; }
-        .rail { width:calc(50% - .75rem); order:2; }
-        #deck { order:1; flex:1 0 100%; } }
+ .rows b { color:var(--blu); text-transform:none; letter-spacing:.02em;
+        font-size:.66rem; text-align:right; }
+ .rows b.off { color:var(--vio-dim); }
+ .rows b.live { color:var(--gold); text-shadow:0 0 8px rgba(255,198,92,.5); }
 
- #frame { width:min(1180px,100%); position:relative; padding:1.5rem 1.6rem 1.3rem;
+ /* --- the stage: the voice, and nothing that isn't the voice ----------- */
+ #stage { flex:1; min-width:0; position:relative; padding:1.4rem 1.6rem 1.2rem;
         border:1px solid var(--line); background:var(--panel);
+        display:flex; flex-direction:column;
         box-shadow:0 0 60px rgba(160,107,255,.10),
                    inset 0 0 70px rgba(63,208,255,.035); }
- #frame::before { content:""; position:absolute; inset:0; pointer-events:none;
-        background:linear-gradient(160deg, rgba(160,107,255,.07), transparent 45%); }
  .corner { position:absolute; width:20px; height:20px; border:2px solid var(--vio);
         filter:drop-shadow(0 0 5px var(--vio-glow)); }
  .tl { top:-2px; left:-2px; border-right:0; border-bottom:0; }
@@ -132,21 +115,16 @@ __PALETTE__
  .bl { bottom:-2px; left:-2px; border-right:0; border-top:0; }
  .br { bottom:-2px; right:-2px; border-left:0; border-top:0; }
 
- /* --- the reactor: a violet core inside blue rings ---------------------- */
- header { display:flex; align-items:center; gap:1rem; }
- #reactor { width:52px; height:52px; border-radius:50%; position:relative; flex:none;
+ header { display:flex; align-items:center; gap:.9rem; }
+ #reactor { width:44px; height:44px; border-radius:50%; position:relative; flex:none;
         background:radial-gradient(circle, #fff 0%, #dcc6ff 14%, var(--vio) 42%,
                    rgba(40,16,80,.92) 72%);
         box-shadow:0 0 16px var(--vio-glow), 0 0 46px rgba(160,107,255,.28),
                    inset 0 0 12px rgba(255,255,255,.65);
         animation:pulse 2.6s ease-in-out infinite; }
- #reactor::before, #reactor::after { content:""; position:absolute; border-radius:50%; }
- #reactor::before { inset:-7px; border:1px dashed rgba(63,208,255,.55);
-        animation:spin 13s linear infinite; }
- #reactor::after { inset:-13px; border:1px solid rgba(160,107,255,.22);
-        border-top-color:rgba(63,208,255,.75); animation:spin 5s linear infinite reverse; }
+ #reactor::before { content:""; position:absolute; inset:-6px; border-radius:50%;
+        border:1px dashed rgba(63,208,255,.55); animation:spin 13s linear infinite; }
  #reactor.working { animation:pulse .7s ease-in-out infinite; }
- #reactor.blip { animation:pulse .25s ease-in-out 3; }
  #reactor.listening { background:radial-gradient(circle, #fff8ea 0%, #ffe2ac 16%,
         var(--gold) 44%, rgba(70,48,10,.92) 72%);
         box-shadow:0 0 16px rgba(255,198,92,.55), 0 0 46px rgba(255,198,92,.30); }
@@ -155,95 +133,71 @@ __PALETTE__
         box-shadow:0 0 16px var(--blu-glow), 0 0 46px rgba(63,208,255,.30); }
  @keyframes pulse { 0%,100% { transform:scale(1) } 50% { transform:scale(1.07) } }
  @keyframes spin { to { transform:rotate(360deg) } }
-
- .crest { width:26px; height:26px; flex:none;
+ .crest { width:24px; height:24px; flex:none;
         filter:drop-shadow(0 0 6px var(--vio-glow)); }
- .wordmark { display:flex; align-items:center; gap:.55rem; }
- h1 { font-size:1.05rem; letter-spacing:.55em; font-weight:600;
+ .wordmark { display:flex; align-items:center; gap:.5rem; }
+ h1 { font-size:1rem; letter-spacing:.55em; font-weight:600;
       background:linear-gradient(90deg, var(--vio-soft), var(--blu));
-      -webkit-background-clip:text; background-clip:text; color:transparent;
-      filter:drop-shadow(0 0 10px rgba(160,107,255,.35)); }
- #status { font-size:.68rem; color:var(--vio-dim); letter-spacing:.22em;
-      margin-top:.3rem; text-transform:uppercase; }
+      -webkit-background-clip:text; background-clip:text; color:transparent; }
+ #status { font-size:.62rem; color:var(--vio-dim); letter-spacing:.22em;
+      margin-top:.25rem; text-transform:uppercase; }
  #status b { color:var(--blu); }
+ #tabs { display:flex; gap:.35rem; margin-left:auto; }
+ .tab { padding:.4rem .9rem; cursor:pointer; border:1px solid var(--line);
+      background:rgba(160,107,255,.05); font-size:.6rem; letter-spacing:.24em;
+      text-transform:uppercase; color:var(--vio-dim);
+      transition:color .25s, border-color .25s, background .25s, box-shadow .25s; }
+ .tab:hover { color:var(--vio-soft); }
+ .tab.on { color:var(--blu); border-color:rgba(63,208,255,.6);
+      background:linear-gradient(180deg, rgba(63,208,255,.14), transparent);
+      box-shadow:0 0 16px rgba(63,208,255,.20); }
 
- /* --- telemetry: the small readouts a cockpit ought to have -------------- */
- #readout { display:flex; gap:.4rem; flex-wrap:wrap; margin:.9rem 0 .2rem;
-      padding-bottom:.7rem; border-bottom:1px solid var(--line); }
- .chip { display:flex; align-items:baseline; gap:.4rem; padding:.28rem .55rem;
-      border:1px solid rgba(63,208,255,.18); background:rgba(63,208,255,.04);
-      font-size:.62rem; letter-spacing:.16em; text-transform:uppercase; }
- .chip i { color:var(--vio-dim); font-style:normal; }
- .chip b { color:var(--blu); font-weight:600; letter-spacing:.1em; }
- .chip.hot b { color:var(--gold); }
- #sweep { height:1px; margin:0 0 .8rem; overflow:hidden; }
- #sweep::after { content:""; display:block; height:1px; width:38%;
-      background:linear-gradient(90deg, transparent, var(--vio), var(--blu), transparent);
-      animation:sweep 4.2s ease-in-out infinite; }
- @keyframes sweep { 0% { transform:translateX(-100%) } 100% { transform:translateX(320%) } }
+ /* whose voice it is */
+ #who { display:flex; justify-content:center; gap:2.4rem; margin-top:1rem;
+      font-size:.6rem; letter-spacing:.3em; text-transform:uppercase; }
+ #who span { color:rgba(160,107,255,.28); transition:color .3s, text-shadow .3s; }
+ #who.listening .me { color:var(--gold); text-shadow:0 0 12px rgba(255,198,92,.6); }
+ #who.speaking .him { color:var(--blu); text-shadow:0 0 12px var(--blu-glow); }
 
- /* --- the first-run invitation ------------------------------------------ */
- #attune { display:flex; align-items:center; gap:1rem; margin:0 0 .8rem;
-        padding:.75rem .9rem; border:1px solid var(--gold);
-        background:linear-gradient(90deg, rgba(255,198,92,.10), transparent 70%);
-        animation:beckon 2.8s ease-in-out infinite; }
- #attune b { color:#ffe2ac; letter-spacing:.06em; }
- #attune span { display:block; color:var(--vio-dim); font-size:.7rem;
-        line-height:1.5; margin-top:.2rem; }
- #attune button { border-color:var(--gold); color:var(--gold);
-        white-space:nowrap; margin-left:auto; }
- #attune button:hover { background:rgba(255,198,92,.10);
-        box-shadow:0 0 14px rgba(255,198,92,.45); }
- @keyframes beckon { 0%,100% { border-color:rgba(255,198,92,.30) }
-                     50% { border-color:rgba(255,198,92,.95) } }
- #attune.known { animation:none; border-color:var(--line); background:none;
-        padding:.3rem 0; }
- #attune.known b, #attune.known span { display:none; }
- #attune.known button { border-color:rgba(160,107,255,.45); color:var(--vio-soft);
-        margin-left:0; font-size:.64rem; padding:.32rem .6rem; }
+ /* the visualiser is a canvas: one element, drawn only when there is
+    something to say, rather than dozens of animated boxes */
+ #wave { display:block; width:100%; height:230px; }
+ #sub { min-height:3rem; text-align:center; font-size:1.4rem; line-height:1.45;
+      color:#f0f8ff; text-shadow:0 0 18px var(--blu-glow); padding:0 1rem; }
+ #hint2 { text-align:center; font-size:.6rem; letter-spacing:.24em;
+      text-transform:uppercase; color:var(--vio-dim); margin-top:.5rem; }
 
- /* --- the subtitle: what he heard, big enough to check at a glance ------- */
- #subtitle { min-height:1.5rem; margin:.1rem 0 .7rem; text-align:center;
-        font-size:1.05rem; letter-spacing:.03em; color:#e6f6ff;
-        text-shadow:0 0 10px var(--blu-glow); }
- #subtitle:empty { display:none; }
-
- /* --- the log ------------------------------------------------------------ */
- #log { border:1px solid var(--line); background:rgba(6,4,14,.75);
-      height:310px; overflow-y:auto; padding:.85rem .95rem; white-space:pre-wrap;
-      font-size:12px; line-height:1.6; color:var(--vio-soft);
-      scrollbar-color:var(--vio-dim) transparent; }
- #log div { padding:1px 0; }
- #log .me { color:#dff3ff; text-shadow:0 0 8px var(--blu-glow); }
- #log .act { color:var(--gold); animation:landed 1s ease-out; }
- @keyframes landed { 0% { background:rgba(255,198,92,.22); text-shadow:0 0 14px var(--gold) }
-                     100% { background:transparent } }
-
- /* --- consent ------------------------------------------------------------ */
+ /* the plan preview and gates — the consent surface must never be hidden */
+ #feed { margin-top:.9rem; max-height:104px; overflow-y:auto; font-size:11.5px;
+      line-height:1.65; color:var(--vio-soft); white-space:pre-wrap;
+      scrollbar-color:var(--vio-dim) transparent; padding-right:.3rem; }
+ #feed .me { color:#dff3ff; }
+ #feed .act { color:var(--gold); }
  .gate { border:1px solid var(--gold); background:rgba(38,26,6,.55);
-      padding:.6rem .8rem; margin:.6rem 0; display:flex; gap:.8rem;
+      padding:.55rem .75rem; margin:.5rem 0; display:flex; gap:.8rem;
       align-items:center; justify-content:space-between; color:var(--gold);
-      text-shadow:0 0 6px rgba(255,198,92,.4); font-size:12px;
-      box-shadow:0 0 22px rgba(255,198,92,.12); }
- .gate::before { content:"⚠ AUTHORIZATION"; letter-spacing:.2em; font-size:.62rem;
-      border-right:1px solid rgba(255,198,92,.4); padding-right:.8rem; flex:none; }
+      font-size:11.5px; box-shadow:0 0 22px rgba(255,198,92,.12); }
+ .gate::before { content:"⚠"; font-size:.9rem; flex:none; }
  .gate button { border-color:var(--gold); color:var(--gold); }
- .gate button:hover { background:rgba(255,198,92,.10);
-      box-shadow:0 0 12px rgba(255,198,92,.5); }
 
- /* --- controls ----------------------------------------------------------- */
- #bar, #cmds { display:flex; gap:.5rem; margin-top:.8rem; align-items:center;
+ /* the video page, for later */
+ #screen { display:none; align-items:center; justify-content:center; height:230px; }
+ #cam { max-width:100%; max-height:230px; border-radius:18px;
+      box-shadow:0 0 40px rgba(160,107,255,.28); }
+ #signs { display:flex; gap:.45rem; justify-content:center; margin-top:.8rem;
       flex-wrap:wrap; }
- input[type=text] { flex:1; min-width:200px; background:rgba(8,6,18,.9);
-      color:#eaf7ff; border:1px solid rgba(160,107,255,.35); padding:.65rem .8rem;
-      font:inherit; outline:none; caret-color:var(--blu);
-      clip-path:polygon(10px 0, 100% 0, 100% calc(100% - 10px),
-                        calc(100% - 10px) 100%, 0 100%, 0 10px); }
- input[type=text]:focus { border-color:var(--vio);
-      box-shadow:0 0 16px rgba(160,107,255,.30); }
+ .sign { padding:.36rem .7rem; border-radius:10px; font-size:.58rem;
+      letter-spacing:.16em; text-transform:uppercase; color:var(--vio-dim);
+      border:1px solid rgba(160,107,255,.22); background:rgba(160,107,255,.05);
+      transition:color .25s, border-color .25s, box-shadow .25s, transform .25s; }
+ .sign.seen { color:var(--gold); border-color:var(--gold); transform:translateY(-2px);
+      box-shadow:0 0 18px rgba(255,198,92,.45); }
+
+ #bar { display:flex; gap:.5rem; align-items:center; margin-top:auto;
+      padding-top:.9rem; flex-wrap:wrap; }
  button { background:transparent; color:var(--blu); font:inherit; cursor:pointer;
-      border:1px solid rgba(160,107,255,.45); padding:.58rem .85rem;
-      letter-spacing:.12em; text-transform:uppercase; font-size:.7rem;
+      border:1px solid rgba(160,107,255,.45); padding:.55rem .85rem;
+      letter-spacing:.12em; text-transform:uppercase; font-size:.68rem;
       clip-path:polygon(8px 0, 100% 0, 100% calc(100% - 8px),
                         calc(100% - 8px) 100%, 0 100%, 0 8px);
       transition:box-shadow .15s, background .15s, color .15s; }
@@ -251,325 +205,211 @@ __PALETTE__
       box-shadow:0 0 16px var(--vio-glow); }
  #mic { border-color:rgba(63,208,255,.55); }
  #bell { color:var(--red); border-color:rgba(255,90,110,.6); }
- #bell:hover { background:rgba(255,90,110,.08); color:var(--red);
-      box-shadow:0 0 14px rgba(255,90,110,.5); }
- label { color:var(--vio-dim); font-size:.68rem; letter-spacing:.12em;
+ #bell:hover { background:rgba(255,90,110,.08); color:var(--red); }
+ label { color:var(--vio-dim); font-size:.62rem; letter-spacing:.12em;
       text-transform:uppercase; display:flex; gap:.4rem; align-items:center;
       cursor:pointer; }
  input[type=checkbox] { accent-color:var(--vio); }
- #hint { margin-top:.9rem; font-size:.62rem; color:var(--vio-dim);
-      letter-spacing:.16em; text-transform:uppercase; line-height:1.9; }
- #hint b { color:var(--blu); }
 
- /* --- the three pages ----------------------------------------------------- */
- #tabs { display:flex; gap:.35rem; margin:.2rem 0 .8rem; }
- .tab { flex:1; text-align:center; padding:.45rem .3rem; cursor:pointer;
-      border:1px solid var(--line); background:rgba(160,107,255,.05);
-      font-size:.62rem; letter-spacing:.24em; text-transform:uppercase;
-      color:var(--vio-dim); transition:color .25s, border-color .25s,
-      background .25s, box-shadow .25s; }
- .tab:hover { color:var(--vio-soft); }
- .tab.on { color:var(--blu); border-color:rgba(63,208,255,.6);
-      background:linear-gradient(180deg, rgba(63,208,255,.14), transparent);
-      box-shadow:0 0 16px rgba(63,208,255,.20); }
- #deck { overflow:hidden; flex:1; min-width:0; }
- #track { display:flex; width:300%;
-      transition:transform .55s cubic-bezier(.65,0,.35,1); }
- .page { width:33.3333%; flex:none; padding:0 2px; }
- #track.p1 { transform:translateX(0) }
- #track.p2 { transform:translateX(-33.3333%) }
- #track.p3 { transform:translateX(-66.6666%) }
+ #attune { display:flex; align-items:center; gap:1rem; margin-top:.8rem;
+      padding:.6rem .8rem; border:1px solid var(--gold);
+      background:linear-gradient(90deg, rgba(255,198,92,.10), transparent 70%); }
+ #attune b { color:#ffe2ac; font-size:.8rem; }
+ #attune span { display:block; color:var(--vio-dim); font-size:.66rem;
+      margin-top:.15rem; }
+ #attune button { border-color:var(--gold); color:var(--gold); margin-left:auto; }
+ #attune.known { display:none; }
 
- /* the voice page: a waveform standing free on the panel, and the words.
-    No frame — a box around a voice is just furniture. */
- #stage { height:330px; display:flex; flex-direction:column;
-      align-items:center; justify-content:center; gap:1.6rem; }
- #bigviz { display:flex; align-items:center; gap:5px; height:150px; }
- #bigviz i { width:6px; height:150px; border-radius:4px;
-      background:linear-gradient(180deg, var(--blu), var(--vio));
-      opacity:.45; transition:opacity .3s; transform-origin:center;
-      transform:scaleY(calc(var(--env) * .10 + .03)); }
- #stage.listening #bigviz i, #stage.speaking #bigviz i { opacity:1;
-      animation:breathe var(--beat) ease-in-out infinite; }
- #stage.listening #bigviz i { background:linear-gradient(180deg, #ffe2ac, var(--gold)); }
- #stage.speaking #bigviz i { background:linear-gradient(180deg, #bfefff, var(--blu)); }
- /* the envelope makes it a spindle — tall at the middle, tapering to nothing */
- @keyframes breathe { 0%,100% { transform:scaleY(calc(var(--env) * .09 + .03)) }
-                      50% { transform:scaleY(calc(var(--env) * .88 + .05)) } }
- #bigsub { min-height:2.6rem; max-width:78%; text-align:center; font-size:1.35rem;
-      color:#f0f8ff; text-shadow:0 0 18px var(--blu-glow); line-height:1.45;
-      letter-spacing:.01em; }
- /* whose voice the spindle belongs to — his, or yours */
- #who { display:flex; gap:2.2rem; font-size:.62rem; letter-spacing:.28em;
-      text-transform:uppercase; }
- #who span { color:rgba(160,107,255,.30); transition:color .3s, text-shadow .3s; }
- #stage.listening #who .me { color:var(--gold);
-      text-shadow:0 0 12px rgba(255,198,92,.6); }
- #stage.speaking #who .him { color:var(--blu);
-      text-shadow:0 0 12px var(--blu-glow); }
-
- /* the video page: the picture itself, rounded, with the signs beneath it */
- #screen { height:330px; position:relative; display:flex; align-items:center;
-      justify-content:center; }
- #cam { max-width:100%; max-height:330px; display:none; border-radius:18px;
-      filter:saturate(1.15) contrast(1.05);
-      box-shadow:0 0 40px rgba(160,107,255,.28), 0 0 90px rgba(63,208,255,.12); }
- #camoff { text-align:center; color:var(--vio-dim); font-size:.72rem;
-      letter-spacing:.12em; line-height:2; padding:2rem;
-      border-radius:18px; border:1px dashed rgba(160,107,255,.28);
-      background:radial-gradient(300px 160px at 50% 50%,
-                 rgba(160,107,255,.07), transparent 70%); }
- #camoff b { display:block; color:var(--gold); letter-spacing:.2em;
-      text-transform:uppercase; font-size:.66rem; margin-bottom:.5rem; }
- #signs { display:flex; gap:.5rem; justify-content:center; margin-top:1rem;
-      flex-wrap:wrap; }
- .sign { padding:.42rem .8rem; border-radius:10px; font-size:.6rem;
-      letter-spacing:.16em; text-transform:uppercase; color:var(--vio-dim);
-      border:1px solid rgba(160,107,255,.22); background:rgba(160,107,255,.05);
-      transition:color .25s, border-color .25s, box-shadow .25s, transform .25s; }
- .sign.seen { color:var(--gold); border-color:var(--gold); transform:translateY(-2px);
-      box-shadow:0 0 18px rgba(255,198,92,.45); }
- #camrow { display:flex; gap:.6rem; align-items:center; justify-content:center;
-      margin-top:.9rem; flex-wrap:wrap; }
+ @media (max-width:1120px) { #room { flex-wrap:wrap; }
+      .side { width:calc(50% - .75rem); order:2; }
+      #stage { order:1; flex:1 0 100%; } }
 </style></head><body>
-<div id="frame">
- <span class="corner tl"></span><span class="corner tr"></span>
- <span class="corner bl"></span><span class="corner br"></span>
- <header>
-  <div id="reactor"></div>
-  <div>
-   <div class="wordmark">__LOGO__<h1>ALFRED</h1></div>
-   <div id="status">systems <b id="state">nominal</b> · the gate is watching</div>
+<div id="room">
+
+ <div class="side">
+  <div class="card" id="cCpu"><div class="name">processor</div>
+   <div class="value">—</div><div class="track"><div class="fill"></div></div>
+   <div class="note" id="nCpu">&nbsp;</div></div>
+  <div class="card" id="cGpu"><div class="name">graphics</div>
+   <div class="value">—</div><div class="track"><div class="fill"></div></div>
+   <div class="note">all engines</div></div>
+  <div class="card" id="cRam"><div class="name">memory</div>
+   <div class="value">—</div><div class="track"><div class="fill"></div></div>
+   <div class="note" id="nRam">&nbsp;</div></div>
+  <div class="card" id="cDisk"><div class="name">storage</div>
+   <div class="value">—</div><div class="track"><div class="fill"></div></div>
+   <div class="note" id="nDisk">&nbsp;</div></div>
+ </div>
+
+ <main id="stage">
+  <span class="corner tl"></span><span class="corner tr"></span>
+  <span class="corner bl"></span><span class="corner br"></span>
+  <header>
+   <div id="reactor"></div>
+   <div>
+    <div class="wordmark">__LOGO__<h1>ALFRED</h1></div>
+    <div id="status">systems <b id="state">nominal</b> · the gate is watching</div>
+   </div>
+   <div id="tabs">
+    <div class="tab on" data-page="voice">◉ voice</div>
+    <div class="tab" data-page="video">▣ video</div>
+   </div>
+  </header>
+
+  <div id="who"><span class="me">you</span><span class="him">alfred</span></div>
+  <canvas id="wave"></canvas>
+  <div id="screen"><img id="cam" alt="the camera, as Alfred sees it"></div>
+  <div id="signs" style="display:none">
+   <span class="sign" data-sign="open_palm">open palm</span>
+   <span class="sign" data-sign="fist">fist</span>
+   <span class="sign" data-sign="peace">peace</span>
+   <span class="sign" data-sign="point">point</span>
+   <span class="sign" data-sign="thumbs_up">thumbs up</span>
   </div>
-  <div id="viz" style="margin-left:auto"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
- </header>
- <div id="readout">
-  <span class="chip"><i>time</i><b id="clock">--:--</b></span>
-  <span class="chip"><i>state</i><b id="chipState">nominal</b></span>
-  <span class="chip"><i>chord</i><b>__HOLD_LABEL__</b></span>
-  <span class="chip"><i>reach</i><b id="chipReach">local</b></span>
-  <span class="chip"><i>gate</i><b>watching</b></span>
- </div>
- <div id="sweep"></div>
- <div id="attune" class="__ATTUNE_STATE__">
-  <div>
-   <b>Make Alfred yours.</b>
-   <span>He'll learn your software and the places you actually go — all of it
-   stays on this machine.</span>
+  <div id="sub">__GREETING__</div>
+  <div id="hint2">press <b>__HOLD_LABEL__</b> to listen · press again to send</div>
+
+  <div id="feed"></div><div id="gates"></div>
+
+  <div id="attune" class="__ATTUNE_STATE__">
+   <div><b>Make Alfred yours.</b>
+    <span>He'll learn your software and where you actually go — all of it stays here.</span></div>
+   <button id="attuneBtn">⟡ attune</button>
   </div>
-  <button id="attuneBtn">⟡ attune to me</button>
- </div>
- <div id="subtitle"></div>
- <div id="tabs">
-  <div class="tab on" data-page="1">◇ chat</div>
-  <div class="tab" data-page="2">◉ voice</div>
-  <div class="tab" data-page="3">▣ video</div>
- </div>
- <div id="stagerow">
-<aside class="rail" id="railL">
- <h2>the machine</h2>
- <div class="gauge" id="gCpu"><div class="top"><span>cpu</span><b>—</b></div>
-  <div class="track"><div class="fill"></div></div>
-  <div class="sub" id="sCpu">&nbsp;</div></div>
- <div class="gauge" id="gGpu"><div class="top"><span>gpu</span><b>—</b></div>
-  <div class="track"><div class="fill"></div></div>
-  <div class="sub" id="sGpu">all engines</div></div>
- <div class="gauge" id="gRam"><div class="top"><span>memory</span><b>—</b></div>
-  <div class="track"><div class="fill"></div></div>
-  <div class="sub" id="sRam">&nbsp;</div></div>
- <div class="gauge" id="gDisk"><div class="top"><span>storage</span><b>—</b></div>
-  <div class="track"><div class="fill"></div></div>
-  <div class="sub" id="sDisk">&nbsp;</div></div>
- <h2>cpu, last minute</h2>
- <div id="spark"></div>
-</aside>
- <div id="deck"><div id="track" class="p1">
 
-  <section class="page">
-   <div id="log"></div><div id="gates"></div>
-  </section>
+  <div id="bar">
+   <button id="mic" title="push-to-talk, 5 seconds">◉ mic</button>
+   <button id="bell" title="the bell — abort everything">◼ stop</button>
+   <button data-cmd="undo">undo</button>
+   <button data-cmd="privacy" title="everything I know about you">privacy</button>
+   <label title="webcam reads hand gestures on demand; every gesture is confirmed">
+    <input type="checkbox" id="gestures"> &#128400; camera</label>
+   <button id="cog" style="margin-left:auto" title="settings">&#9881;</button>
+  </div>
+ </main>
 
-  <section class="page">
-   <div id="stage">
-    <div id="who"><span class="me">you</span><span class="him">alfred</span></div>
-    <div id="bigviz"></div>
-    <div id="bigsub">Press the chord and speak, sir.</div>
-   </div>
-  </section>
+ <div class="side">
+  <div class="card"><div class="name">the butler</div>
+   <div class="rows">
+    <div><span>brain</span><b id="rModel">—</b></div>
+    <div><span>hearing</span><b id="rHearing">—</b></div>
+    <div><span>voice</span><b id="rVoice">—</b></div>
+    <div><span>pace</span><b id="rPace">—</b></div>
+   </div></div>
+  <div class="card"><div class="name">what he knows</div>
+   <div class="rows">
+    <div><span>places</span><b id="rSites">—</b></div>
+    <div><span>programs</span><b id="rApps">—</b></div>
+    <div><span>your names</span><b id="rShort">—</b></div>
+   </div></div>
+  <div class="card"><div class="name">the browser</div>
+   <div class="rows">
+    <div><span>bridge</span><b id="rBridge">—</b></div>
+    <div><span>tabs seen</span><b id="rTabs">—</b></div>
+    <div><span>camera</span><b id="rCam">—</b></div>
+   </div></div>
+  <div class="card"><div class="name">on duty</div>
+   <div class="rows">
+    <div><span>uptime</span><b id="rUp">—</b></div>
+    <div><span>undo depth</span><b id="rUndo">—</b></div>
+    <div><span>time</span><b id="clock">—</b></div>
+   </div></div>
+ </div>
 
-  <section class="page">
-   <div id="screen">
-    <img id="cam" alt="the camera, as Alfred sees it">
-    <div id="camoff"><b>the camera is closed</b>
-     Switch it on and you'll see exactly what I see —<br>
-     the hand drawn as joints and bones, and the sign I read from it.<br>
-     It opens only while you leave this on.</div>
-   </div>
-   <div id="signs">
-    <span class="sign" data-sign="open_palm">open palm</span>
-    <span class="sign" data-sign="fist">fist</span>
-    <span class="sign" data-sign="peace">peace</span>
-    <span class="sign" data-sign="point">point</span>
-    <span class="sign" data-sign="thumbs_up">thumbs up</span>
-   </div>
-   <div id="camrow">
-    <label title="webcam reads hand gestures on demand; every gesture is confirmed before it acts">
-     <input type="checkbox" id="gestures"> &#128400; open the camera</label>
-   </div>
-  </section>
-
- </div></div>
-<aside class="rail" id="railR">
- <h2>the butler</h2>
- <div class="stat"><span>brain</span><b id="rModel">—</b></div>
- <div class="stat"><span>hearing</span><b id="rHearing">—</b></div>
- <div class="stat"><span>voice</span><b id="rVoice">—</b></div>
- <div class="stat"><span>pace</span><b id="rPace">—</b></div>
- <h2>what he knows</h2>
- <div class="stat"><span>places</span><b id="rSites">—</b></div>
- <div class="stat"><span>programs</span><b id="rApps">—</b></div>
- <div class="stat"><span>your names</span><b id="rShort">—</b></div>
- <h2>right now</h2>
- <div class="stat"><span>browser</span><b id="rBridge">—</b></div>
- <div class="stat"><span>tabs seen</span><b id="rTabs">—</b></div>
- <div class="stat"><span>camera</span><b id="rCam">—</b></div>
- <div class="stat"><span>undo depth</span><b id="rUndo">—</b></div>
- <div class="stat"><span>on duty</span><b id="rUp">—</b></div>
-</aside>
- </div>
- <div id="bar">
-  <input id="text" type="text" placeholder="your word is my command, sir…" autofocus>
-  <button id="mic" title="push-to-talk, 5 seconds">◉ mic</button>
-  <button id="bell" title="the bell — abort everything">◼ stop</button>
- </div>
- <div id="cmds">
-  <button data-cmd="menu">menu</button><button data-cmd="undo">undo</button>
-  <button data-cmd="ledger">ledger</button><button data-cmd="burn">burn</button>
-  <button data-cmd="fieldlog" title="what you tested: mishears, refusals, errors">field log</button>
-  <button data-cmd="tabs" title="audit exactly which tabs I can see">tabs</button>
-  <button data-cmd="privacy" title="everything I know about you, and where it sits">privacy</button>
-  <button data-cmd="forgettabs" title="wipe my view of your browser at once">forget tabs</button>
-  <label title="webcam rings the stop bell on a big wave — never commands">
-   <input type="checkbox" id="motion"> &#128247; motion bell</label>
-  <button id="cog" style="margin-left:auto" title="settings">&#9881; settings</button>
- </div>
- <div id="hint">press <b>__HOLD_LABEL__</b> to listen, press again to send · &#9673; mic (5s) ·
-  say &#8220;mute&#8221; / &#8220;unmute&#8221; / &#8220;undo&#8221; · &#9000; CTRL+ALT+C summons me anywhere</div>
 </div>
 <script>
 const TOKEN = "__TOKEN__";
-const log = document.getElementById("log");
+const feed = document.getElementById("feed");
 const reactor = document.getElementById("reactor");
 const stateEl = document.getElementById("state");
-const viz = document.getElementById("viz");
-const subtitle = document.getElementById("subtitle");
-const chipState = document.getElementById("chipState");
+const who = document.getElementById("who");
+const sub = document.getElementById("sub");
 function say(t, me, flash){ const line = document.createElement("div");
   if (me) line.className = "me";
-  if (flash){ line.className = "act";
-    if (!reactor.className){ reactor.className = "blip";
-      setTimeout(()=>{ if(reactor.className==="blip") reactor.className=""; }, 800); } }
+  if (flash) line.className = "act";
   line.textContent = (me ? "› " : "") + t;
-  log.append(line); log.scrollTop = log.scrollHeight; }
+  feed.append(line); feed.scrollTop = feed.scrollHeight;
+  while (feed.childNodes.length > 60) feed.removeChild(feed.firstChild); }
 function post(path, body){ return fetch(path, {method:"POST",
   headers:{"Authorization":"Bearer "+TOKEN,"Content-Type":"application/json"},
   body:JSON.stringify(body||{})}); }
-const stage = document.getElementById("stage");
-const bigsub = document.getElementById("bigsub");
-const bigviz = document.getElementById("bigviz");
-// A spindle: tallest at the centre, tapering to nothing at both ends, so the
-// waveform reads as one shape rather than a row of unrelated sticks.
-const BARS = 33;
-for (let i = 0; i < BARS; i++){
-  const bar = document.createElement("i");
-  const fromMiddle = Math.abs(i - (BARS - 1) / 2) / ((BARS - 1) / 2);
-  const envelope = Math.pow(Math.cos(fromMiddle * Math.PI / 2), 1.35);
-  bar.style.setProperty("--env", envelope.toFixed(3));
-  bar.style.setProperty("--beat", (0.62 + (i % 5) * 0.07).toFixed(2) + "s");
-  bar.style.animationDelay = ((i % 7) * 0.06).toFixed(2) + "s";
-  bigviz.append(bar);
+
+// --- the visualiser --------------------------------------------------------
+// One canvas rather than dozens of animated elements, and it only draws while
+// there is something worth drawing: idle costs a slow drift, not sixty frames.
+const wave = document.getElementById("wave");
+const ctx = wave.getContext("2d");
+let mode = "idle", energy = 0.10, target = 0.10, phase = 0, raf = null;
+function fit(){ const r = wave.getBoundingClientRect(), d = devicePixelRatio || 1;
+  wave.width = Math.max(1, r.width * d); wave.height = Math.max(1, r.height * d);
+  ctx.setTransform(d, 0, 0, d, 0, 0); }
+addEventListener("resize", fit);
+const PALETTE = { idle:["#6a4aa8","#2b7f9e"], listening:["#ffc65c","#ff9a5c"],
+                  speaking:["#3fd0ff","#a06bff"] };
+function draw(){
+  const w = wave.clientWidth, h = wave.clientHeight, mid = h / 2;
+  ctx.clearRect(0, 0, w, h);
+  energy += (target - energy) * 0.08;
+  phase += mode === "idle" ? 0.006 : 0.028;
+  const [a, b] = PALETTE[mode] || PALETTE.idle;
+  const paint = ctx.createLinearGradient(0, 0, w, 0);
+  paint.addColorStop(0, a); paint.addColorStop(1, b);
+  for (let layer = 0; layer < 3; layer++){
+    const depth = 1 - layer * 0.28;
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 3){
+      const p = x / w;
+      // a bell so the shape tapers to nothing at both ends, and three sines
+      // of different speeds so it never repeats visibly
+      const bell = Math.pow(Math.sin(Math.PI * p), 1.7);
+      const y = Math.sin(p * 11 + phase * 2.1 + layer)
+              + Math.sin(p * 19 - phase * 1.4 + layer * 2) * 0.55
+              + Math.sin(p * 5 + phase * 0.8) * 0.75;
+      const amp = bell * energy * (h * 0.34) * depth;
+      const py = mid + y * amp * 0.42;
+      x ? ctx.lineTo(x, py) : ctx.moveTo(x, py);
+    }
+    ctx.strokeStyle = paint;
+    ctx.globalAlpha = layer === 0 ? 0.95 : 0.30 - layer * 0.07;
+    ctx.lineWidth = layer === 0 ? 2.4 : 1.4;
+    ctx.shadowBlur = layer === 0 ? 18 : 0; ctx.shadowColor = a;
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  raf = requestAnimationFrame(draw);
 }
+function startDrawing(){ if (!raf){ fit(); raf = requestAnimationFrame(draw); } }
+function stopDrawing(){ if (raf){ cancelAnimationFrame(raf); raf = null; } }
+document.addEventListener("visibilitychange",
+  ()=> document.hidden ? stopDrawing() : startDrawing());
+startDrawing();
+
 function setState(s){
   reactor.className = s === "idle" ? "" : s;
   stateEl.textContent = s === "idle" ? "nominal" : s;
-  chipState.textContent = s === "idle" ? "nominal" : s;
-  chipState.parentElement.classList.toggle("hot", s !== "idle");
-  viz.className = (s === "listening" || s === "speaking") ? s : "";
-  stage.className = (s === "listening" || s === "speaking") ? s : "";
-  if (s === "listening"){ subtitle.textContent = ""; bigsub.textContent = "Listening…"; }
+  who.className = (s === "listening" || s === "speaking") ? s : "";
+  mode = (s === "listening" || s === "speaking") ? s : "idle";
+  target = mode === "idle" ? 0.10 : 1.0;
+  if (s === "listening") sub.textContent = "Listening…";
 }
-// --- the three pages -------------------------------------------------------
-const track = document.getElementById("track");
-const tabs = [...document.querySelectorAll(".tab")];
-let page = 1;
-function show(n){
-  page = Math.max(1, Math.min(3, n));
-  track.className = "p" + page;
-  tabs.forEach(t => t.classList.toggle("on", +t.dataset.page === page));
-  if (page === 2) document.getElementById("text").blur();
-  if (page !== 3) camStream(false);   // leaving the video page lets go of it
-}
-tabs.forEach(t => t.onclick = ()=>show(+t.dataset.page));
-addEventListener("keydown",(e)=>{
-  if (typingNow()) return;
-  if (e.key === "ArrowRight") show(page + 1);
-  if (e.key === "ArrowLeft") show(page - 1);
-});
-// swipe, for a touchscreen
-let swipeFrom = null;
-document.getElementById("deck").addEventListener("touchstart",
-  (e)=>{ swipeFrom = e.changedTouches[0].clientX; }, {passive:true});
-document.getElementById("deck").addEventListener("touchend", (e)=>{
-  if (swipeFrom === null) return;
-  const moved = e.changedTouches[0].clientX - swipeFrom;
-  if (Math.abs(moved) > 60) show(page + (moved < 0 ? 1 : -1));
-  swipeFrom = null; }, {passive:true});
-// --- the camera ------------------------------------------------------------
-// The <img> is only given a source while the master is looking at it, so the
-// stream is not held open behind his back.
-const cam = document.getElementById("cam");
-const camoff = document.getElementById("camoff");
-function camStream(on){
-  if (on){ cam.src = "/api/camera.mjpg?t=" + TOKEN; cam.style.display = "block";
-           camoff.style.display = "none"; }
-  else { cam.removeAttribute("src"); cam.style.display = "none";
-         camoff.style.display = "block"; }
-}
-const clock = document.getElementById("clock");
-setInterval(()=>{ const d = new Date();
-  clock.textContent = String(d.getHours()).padStart(2,"0") + ":" +
-                      String(d.getMinutes()).padStart(2,"0") + ":" +
-                      String(d.getSeconds()).padStart(2,"0"); }, 1000);
-// --- the instruments -------------------------------------------------------
-// A gauge warms as it fills, so the rail can be read at a glance rather than
-// studied: cool is fine, gold is working, red is straining.
-function gauge(id, percent, caption){
-  const box = document.getElementById(id);
-  if (!box) return;
+// --- the cards -------------------------------------------------------------
+function card(id, percent, noteId, noteText){
+  const box = document.getElementById(id); if (!box) return;
   const shown = Math.max(0, Math.min(100, percent || 0));
   box.querySelector(".fill").style.transform = "scaleX(" + (shown / 100) + ")";
-  box.querySelector("b").textContent = shown.toFixed(0) + "%";
+  box.querySelector(".value").textContent = shown.toFixed(0) + "%";
   box.classList.toggle("warm", shown >= 65 && shown < 85);
   box.classList.toggle("hot", shown >= 85);
-  if (caption) document.getElementById(caption.id).textContent = caption.text;
+  if (noteId) document.getElementById(noteId).textContent = noteText;
 }
-const spark = document.getElementById("spark");
-for (let i = 0; i < 30; i++) spark.append(document.createElement("i"));
-function pushSpark(percent){
-  const bars = spark.querySelectorAll("i");
-  for (let i = 0; i < bars.length - 1; i++)
-    bars[i].style.transform = bars[i + 1].style.transform || "scaleY(.02)";
-  bars[bars.length - 1].style.transform =
-    "scaleY(" + Math.max(0.02, percent / 100) + ")";
-}
-function put(id, value, tone){
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = value;
-  el.className = tone || "";
-}
-function butler(a){
-  if (!a) return;
+function put(id, value, tone){ const el = document.getElementById(id);
+  if (el){ el.textContent = value; el.className = tone || ""; } }
+function instruments(t){
+  card("cCpu", t.cpu, "nCpu", "busy " + (t.cpu||0).toFixed(0) + "%");
+  card("cGpu", t.gpu);
+  card("cRam", t.ram.percent, "nRam", t.ram.used + " / " + t.ram.total + " GiB");
+  card("cDisk", t.disk.percent, "nDisk", t.disk.used + " / " + t.disk.total + " GB");
+  const a = t.alfred; if (!a) return;
   put("rModel", a.model); put("rHearing", a.hearing);
   put("rVoice", a.muted ? "muted" : a.voice, a.muted ? "off" : "");
   put("rPace", a.pace + "×");
@@ -578,72 +418,76 @@ function butler(a){
   put("rTabs", a.tabs || "—", a.tabs ? "" : "off");
   put("rCam", a.camera ? "open" : "closed", a.camera ? "live" : "off");
   put("rUndo", a.undo || "—", a.undo ? "" : "off");
-  const m = Math.floor(a.uptime / 60), h = Math.floor(m / 60);
-  put("rUp", h ? h + "h " + (m % 60) + "m" : m + "m " + (a.uptime % 60) + "s");
+  const m = Math.floor(a.uptime / 60), hh = Math.floor(m / 60);
+  put("rUp", hh ? hh + "h " + (m % 60) + "m" : m + "m " + (a.uptime % 60) + "s");
 }
-function instruments(t){
-  butler(t.alfred);
-  gauge("gCpu", t.cpu, {id:"sCpu", text:"busy " + (t.cpu||0).toFixed(0) + "%"});
-  gauge("gGpu", t.gpu, {id:"sGpu", text:"all engines"});
-  gauge("gRam", t.ram.percent, {id:"sRam",
-        text:t.ram.used + " / " + t.ram.total + " GiB"});
-  gauge("gDisk", t.disk.percent, {id:"sDisk",
-        text:t.disk.used + " / " + t.disk.total + " GB"});
-  pushSpark(t.cpu || 0);
-}
+setInterval(()=>{ const d = new Date();
+  put("clock", String(d.getHours()).padStart(2,"0") + ":" +
+               String(d.getMinutes()).padStart(2,"0")); }, 1000);
+// --- consent ---------------------------------------------------------------
 const gates = document.getElementById("gates");
 function gateCard(e){
-  const card = document.createElement("div"); card.className = "gate"; card.id = "g"+e.id;
+  const box = document.createElement("div"); box.className = "gate"; box.id = "g"+e.id;
   const label = document.createElement("span");
   const buttons = document.createElement("span");
   buttons.style.display = "flex"; buttons.style.gap = ".4rem";
   if (e.kind === "seal"){
-    label.textContent = e.summary + " — this reaches your files. Type your approval, exactly:";
+    label.textContent = e.summary + " — type your approval, exactly:";
     const field = document.createElement("input");
     field.placeholder = "yes i approve please proceed";
-    field.style.cssText = "flex:1;min-width:14rem;background:#0a0714;border:1px solid var(--gold);color:var(--gold);padding:.35rem .5rem;font:inherit";
+    field.style.cssText = "flex:1;min-width:13rem;background:#0a0714;border:1px solid var(--gold);color:var(--gold);padding:.35rem .5rem;font:inherit";
     const b = document.createElement("button"); b.textContent = "approve";
-    const send = ()=>{ post("/api/gate",{id:e.id,phrase:field.value}); card.remove(); };
+    const send = ()=>{ post("/api/gate",{id:e.id,phrase:field.value}); box.remove(); };
     b.onclick = send;
     field.addEventListener("keydown",(k)=>{ if(k.key==="Enter") send(); });
-    buttons.append(field, b);
-    setTimeout(()=>field.focus(), 0);
-  } else {  // confirm
+    buttons.append(field, b); setTimeout(()=>field.focus(), 0);
+  } else {
     label.textContent = e.summary;
     for (const [text, go] of [["engage", true], ["negative", false]]){
       const b = document.createElement("button"); b.textContent = text;
-      b.onclick = ()=>{ post("/api/gate",{id:e.id,go}); card.remove(); };
+      b.onclick = ()=>{ post("/api/gate",{id:e.id,go}); box.remove(); };
       buttons.append(b);
     }
   }
-  card.append(label, buttons); gates.append(card);
+  box.append(label, buttons); gates.append(box);
 }
+// --- voice / video ---------------------------------------------------------
+const cam = document.getElementById("cam"), screen = document.getElementById("screen");
+const signs = document.getElementById("signs");
+let page = "voice";
+function show(name){
+  page = name;
+  document.querySelectorAll(".tab").forEach(t =>
+    t.classList.toggle("on", t.dataset.page === name));
+  const voice = name === "voice";
+  wave.style.display = voice ? "block" : "none";
+  who.style.display = voice ? "flex" : "none";
+  screen.style.display = voice ? "none" : "flex";
+  signs.style.display = voice ? "none" : "flex";
+  if (voice){ camStream(false); startDrawing(); } else { stopDrawing(); }
+}
+document.querySelectorAll(".tab").forEach(t => t.onclick = ()=>show(t.dataset.page));
+function camStream(on){
+  if (on){ cam.src = "/api/camera.mjpg?t=" + TOKEN; cam.style.display = "block"; }
+  else { cam.removeAttribute("src"); cam.style.display = "none"; }
+}
+// --- the wire --------------------------------------------------------------
 const events = new EventSource("/api/events?t="+TOKEN);
 events.onmessage = (m)=>{ const e = JSON.parse(m.data);
   if (e.type === "say") say(e.text, false, e.flash);
-  else if (e.type === "subtitle"){
-    const quoted = e.text ? ("“" + e.text + "”") : "";
-    subtitle.textContent = quoted;
-    bigsub.textContent = quoted || "Press the chord and speak, sir."; }
+  else if (e.type === "subtitle") sub.textContent = e.text ? ("“" + e.text + "”") : "";
   else if (e.type === "telemetry") instruments(e);
+  else if (e.type === "state") setState(e.state);
+  else if (e.type === "gate") gateCard(e);
   else if (e.type === "gesture"){
     const chip = document.querySelector('.sign[data-sign="' + e.name + '"]');
     if (chip){ chip.classList.add("seen");
                setTimeout(()=>chip.classList.remove("seen"), 1600); } }
-  else if (e.type === "state") setState(e.state);
-  else if (e.type === "gate") gateCard(e);
   else if (e.type === "gate_done"){ const c = document.getElementById("g"+e.id); if(c) c.remove(); } };
-const text = document.getElementById("text");
-text.addEventListener("keydown",(k)=>{ if(k.key==="Enter" && text.value.trim()){
-  say(text.value.trim(), true); post("/api/ask",{text:text.value.trim()}); text.value=""; }});
 document.getElementById("mic").onclick = ()=>post("/api/voice");
 document.getElementById("bell").onclick = ()=>post("/api/bell");
-// press the chord to begin listening, press it again to send.
-// When the global latch is armed it covers this page too, so we stand down
-// rather than toggle twice on the same keystroke.
-const HOLD = __HOLD_KEYS__;        // e.g. ["j","k"] — editable in settings
+const HOLD = __HOLD_KEYS__;
 const GLOBAL_KEYS = __GLOBAL_KEYS__;
-document.getElementById("chipReach").textContent = GLOBAL_KEYS ? "anywhere" : "this page";
 function typingNow(){ const el = document.activeElement;
   return el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"); }
 if (!GLOBAL_KEYS) {
@@ -657,37 +501,22 @@ if (!GLOBAL_KEYS) {
   addEventListener("keyup",(e)=>{ const k = e.key.toLowerCase();
     if(HOLD.includes(k)) held.delete(k); });
 }
-say("__GREETING__", false);  // the boot line (audio is spoken server-side)
 document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>post("/api/command",{name:b.dataset.cmd}));
-document.getElementById("motion").onchange = (e)=>post("/api/motion",{enable:e.target.checked});
 document.getElementById("gestures").onchange = (e)=>{
   post("/api/gestures",{enable:e.target.checked});
-  // give the camera a moment to open before asking it for pictures
-  if (e.target.checked) setTimeout(()=>{ if (page === 3) camStream(true); }, 1200);
+  if (e.target.checked){ show("video");
+    setTimeout(()=>{ if (page === "video") camStream(true); }, 1200); }
   else camStream(false);
 };
 document.getElementById("cog").onclick = ()=>{ location.href = "/settings?t="+TOKEN; };
 document.getElementById("attuneBtn").onclick = (e)=>{
   e.target.disabled = true; e.target.textContent = "attuning…";
   post("/api/attune").finally(()=>setTimeout(()=>{
-    e.target.disabled = false; e.target.textContent = "⟡ re-attune";
-    document.getElementById("attune").classList.add("known");
-  }, 1500));
+    document.getElementById("attune").classList.add("known"); }, 1500));
 };
+show("voice");
 </script></body></html>"""
 
-# the voice visualiser and its animation, shared shape with the reactor states
-_VIZ_CSS = """
- #viz { display:flex; align-items:flex-end; gap:3px; height:26px; }
- #viz i { width:3px; height:24px; background:var(--vio-dim); border-radius:2px;
-        transform:scaleY(.2); transform-origin:bottom; }
- #viz.listening i { background:var(--gold); animation:bounce .8s ease-in-out infinite; }
- #viz.speaking i { background:var(--blu); animation:bounce .5s ease-in-out infinite; }
- #viz i:nth-child(2){ animation-delay:.10s } #viz i:nth-child(3){ animation-delay:.22s }
- #viz i:nth-child(4){ animation-delay:.32s } #viz i:nth-child(5){ animation-delay:.16s }
- #viz i:nth-child(6){ animation-delay:.26s } #viz i:nth-child(7){ animation-delay:.06s }
- @keyframes bounce { 0%,100%{ transform:scaleY(.2) } 50%{ transform:scaleY(1) } }
-"""
 
 SETTINGS_PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -816,5 +645,5 @@ document.getElementById("back").onclick = ()=>{ location.href = "/?t="+TOKEN; };
 # the crest, palette and visualiser are static — bake them in once, at import
 for _name in ("PAGE", "SETTINGS_PAGE"):
     _doc = globals()[_name].replace("__LOGO__", LOGO).replace("__FAVICON__", FAVICON)
-    _doc = _doc.replace("__PALETTE__", _PALETTE + (_VIZ_CSS if _name == "PAGE" else ""))
+    _doc = _doc.replace("__PALETTE__", _PALETTE)
     globals()[_name] = _doc
