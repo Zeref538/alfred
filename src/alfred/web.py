@@ -42,7 +42,7 @@ GREETING = ("Good evening, sir. All systems are nominal. "
 MAX_HOLD_SECONDS = 30  # a stuck key can't hold the mic open forever
 IDLE_GRACE_SECONDS = 3.0  # after the last window closes, dismiss himself
 
-_WAKE = re.compile(r"^\s*(?:hey\s+|ok\s+)?alfred[,:.\s]+", re.I)
+_WAKE = re.compile(r"^\s*(?:hey\s+|ok\s+)?alfred\b[\s,:.]*", re.I)
 
 
 def _strip_wake(text: str) -> str:
@@ -280,8 +280,16 @@ class Session:
         if not raw:
             fieldlog.record(outcome="empty", raw="")
             return
+        # his own name is how he's addressed, not part of the order — drop it
+        # before the corrector or the planner can mistake it for the object
+        addressed = _strip_wake(raw)
+        if not addressed:
+            self.say("You have my attention, sir.")
+            self._speak("You have my attention, sir.")
+            fieldlog.record(outcome="empty", raw=raw, detail="name only")
+            return
         from .planner import correct_transcript
-        transcript = correct_transcript(raw)
+        transcript = correct_transcript(addressed)
         if transcript != raw:
             self.emit(type="subtitle", text=transcript)
             self.say(f'Taking that as: "{transcript}"')

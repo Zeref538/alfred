@@ -186,6 +186,12 @@ def test_strip_wake_word():
     assert _strip_wake("alfred open youtube") == "open youtube"
     assert _strip_wake("Hey Alfred, search cats") == "search cats"
     assert _strip_wake("open youtube") == "open youtube"
+    # the live failure: his name rode into the query as the object
+    assert _strip_wake("alfred open, spotify, and play a post malone music") == \
+        "open, spotify, and play a post malone music"
+    assert _strip_wake("Alfred. volume 30") == "volume 30"
+    assert _strip_wake("alfred") == ""          # addressed, no order given
+    assert _strip_wake("alfredo pasta recipe") == "alfredo pasta recipe"  # not the name
 
 
 def test_unknown_route_is_404(server):
