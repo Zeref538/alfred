@@ -41,6 +41,17 @@ DEFAULT_BINDINGS = {
     }
 }
 
+# The hand as a skeleton: which landmarks are joined by a bone. Wrist 0, then
+# thumb, index, middle, ring, pinky outward, with the palm strung across.
+HAND_BONES = [
+    (0, 1), (1, 2), (2, 3), (3, 4),            # thumb
+    (0, 5), (5, 6), (6, 7), (7, 8),            # index
+    (9, 10), (10, 11), (11, 12),               # middle
+    (13, 14), (14, 15), (15, 16),              # ring
+    (0, 17), (17, 18), (18, 19), (19, 20),     # pinky
+    (5, 9), (9, 13), (13, 17),                 # across the palm
+]
+
 _TIPS = {"index": 8, "middle": 12, "ring": 16, "pinky": 20}
 _PIPS = {"index": 6, "middle": 10, "ring": 14, "pinky": 18}
 
@@ -118,32 +129,48 @@ class Watch:
     a held hand doesn't machine-gun the butler.
     """
 
-    def __init__(self, on_gesture, camera: int = 0, preview: bool = True):
+    def __init__(self, on_gesture, camera: int = 0, preview: bool = True,
+                 stream: bool = False):
         self.on_gesture = on_gesture
         self.camera = camera
-        self.preview = preview  # show what the camera sees, so you can trust it
+        self.preview = preview  # an OpenCV window, for the CLI test harness
+        self.stream = stream    # keep the latest frame for the HUD to show
         self._stop = False
         self._thread = None
+        self._jpeg = None
 
-    def _draw(self, frame, points, gesture):
-        """The preview window: landmarks, the reading, and a plain 'watching'
-        light — so it's obvious whether the camera actually sees you."""
+    def latest_jpeg(self):
+        """The most recent annotated frame, or None. Held for exactly as long
+        as it takes the next one to replace it."""
+        return self._jpeg
+
+    def _annotate(self, frame, points, gesture):
+        """Draw the hand as a skeleton — the joints and the bones between them
+        — so what the camera makes of you is plain to see, not merely asserted."""
         import cv2
         height, width = frame.shape[:2]
         if points:
-            for x, y in points:
-                cv2.circle(frame, (int(x * width), int(y * height)), 4,
-                           (255, 200, 60), -1)
-            label, colour = (gesture or "hand — no known sign"), (60, 255, 160)
+            at = lambda i: (int(points[i][0] * width), int(points[i][1] * height))
+            for a, b in HAND_BONES:
+                cv2.line(frame, at(a), at(b), (255, 170, 90), 2, cv2.LINE_AA)
+            for index in range(len(points)):
+                tip = index in (4, 8, 12, 16, 20)
+                cv2.circle(frame, at(index), 6 if tip else 4,
+                           (120, 255, 200) if tip else (255, 220, 140), -1,
+                           cv2.LINE_AA)
+            label, colour = (gesture or "hand — no known sign"), (120, 255, 200)
         else:
-            label, colour = "no hand in view", (120, 120, 120)
-        cv2.rectangle(frame, (0, 0), (width, 38), (12, 8, 4), -1)
-        cv2.putText(frame, f"ALFRED  |  {label}", (12, 26),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.62, colour, 2)
-        cv2.putText(frame, "Esc closes the preview", (12, height - 12),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (140, 140, 140), 1)
+            label, colour = "no hand in view", (150, 150, 150)
+        cv2.rectangle(frame, (0, 0), (width, 34), (18, 8, 30), -1)
+        cv2.putText(frame, f"ALFRED  |  {label}", (12, 23),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.58, colour, 2, cv2.LINE_AA)
+        return frame
+
+    def _draw(self, frame, points, gesture):
+        """The CLI preview window. False once Esc is pressed."""
+        import cv2
         cv2.imshow("Alfred - gesture preview", frame)
-        return (cv2.waitKey(1) & 0xFF) != 27  # False once Esc is pressed
+        return (cv2.waitKey(1) & 0xFF) != 27
 
     def _loop(self) -> None:
         import cv2
@@ -168,10 +195,17 @@ class Watch:
                     points = ([(p.x, p.y) for p in result.hand_landmarks[0]]
                               if result.hand_landmarks else None)
                     gesture = classify(points)
-                    # the preview keeps drawing through the cooldown, so the
-                    # picture never freezes while he's resting
-                    if self.preview and not self._draw(frame, points, gesture):
-                        break
+                    # annotate through the cooldown too, so the picture never
+                    # freezes while he's resting
+                    if self.preview or self.stream:
+                        shown = self._annotate(frame, points, gesture)
+                        if self.stream:
+                            ok, buffer = cv2.imencode(
+                                ".jpg", shown, [cv2.IMWRITE_JPEG_QUALITY, 72])
+                            if ok:
+                                self._jpeg = buffer.tobytes()
+                        if self.preview and not self._draw(shown, points, gesture):
+                            break
                     if resting > 0:
                         resting -= 1
                         continue
