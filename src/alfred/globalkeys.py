@@ -57,6 +57,41 @@ def available() -> bool:
         return False
 
 
+def diagnose(seconds: int = 15) -> int:
+    """`alfred keys` — run this yourself in a terminal and press the chord.
+
+    A global keyboard hook only receives events when the process owns an
+    interactive desktop session; a HUD started by some other tool may not.
+    This says plainly whether the hook sees your keys, and whether the chord
+    fires, without guessing.
+    """
+    import time
+    if not available():
+        print("The [hotkey] extra isn't installed, sir (pip install -e .[hotkey]).")
+        return 1
+    import keyboard
+    keys = hold_keys()
+    print(f"Watching for the {'+'.join(k.upper() for k in keys)} chord "
+          f"for {seconds}s. Press some keys, sir.")
+    pressed, fired = [], []
+    chord = Chord(keys, lambda: fired.append("start"), lambda: fired.append("stop"))
+    keyboard.on_press(lambda e: (pressed.append((e.name or "").lower()),
+                                 chord.press((e.name or "").lower())))
+    keyboard.on_release(lambda e: chord.release((e.name or "").lower()))
+    time.sleep(seconds)
+    if not pressed:
+        print("The hook saw NO keys at all — this process isn't receiving global "
+              "key events (no interactive desktop, or another tool owns the hook).")
+        return 1
+    print(f"The hook saw {len(pressed)} key events: {sorted(set(pressed))[:12]}")
+    if fired:
+        print(f"The chord fired {len(fired)} time(s) — global hold-to-talk works.")
+        return 0
+    print(f"But the {'+'.join(keys)} chord never fired — hold BOTH keys down "
+          "together (not one after the other).")
+    return 1
+
+
 def watch(on_start, on_stop) -> None:
     """Arm the global J+K chord. on_start/on_stop should return quickly — wrap
     any slow work (recording, transcription) in a thread so the system-wide

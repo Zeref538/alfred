@@ -185,6 +185,39 @@ _COMMON_SITES = {
 }
 
 
+_PLAY = re.compile(r"\bplay\b(.+)")
+_PLAY_SERVICES = {
+    "spotify": "https://open.spotify.com/search/{}",
+    "youtube": "https://www.youtube.com/results?search_query={}",
+}
+_PLAY_FILLER = re.compile(
+    r"\b(a|an|the|some|any|me|for|song|songs|music|track|tracks|video|videos|"
+    r"playlist|on|in|with|using|please)\b")
+
+
+def play_lookup(utterance: str) -> str | None:
+    """'open spotify and play a post malone song' -> a Spotify search URL.
+
+    The small local model kept inventing a query the master never said; naming
+    a service and something to play is common and exact enough to resolve
+    deterministically instead."""
+    said = utterance.lower()
+    service = next((s for s in _PLAY_SERVICES if s in said), None)
+    if service is None:
+        return None
+    match = _PLAY.search(said)
+    if not match:
+        return None
+    subject = _PLAY_FILLER.sub(" ", match.group(1))
+    subject = re.sub(rf"\b{service}\b", " ", subject)
+    subject = re.sub(r"[^a-z0-9 ]", " ", subject)
+    subject = re.sub(r"\s+", " ", subject).strip()
+    if not subject:
+        return None
+    from urllib.parse import quote
+    return _PLAY_SERVICES[service].format(quote(subject))
+
+
 def site_lookup(utterance: str) -> str | None:
     """'open my portfolio' / 'open youtube' -> a URL. The user's bookmarks are
     tried first (their names win), then a table of well-known sites — both

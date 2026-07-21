@@ -90,6 +90,11 @@ def _resolve_utterance(utterance: str, ledger: Ledger) -> str:
         ledger.record(event="plan", source="customs", utterance=utterance)
         return plan
     from . import vocab
+    # "play X on spotify" is exact enough to resolve without the model guessing
+    url = vocab.play_lookup(utterance)
+    if url is not None:
+        ledger.record(event="plan", source="play", utterance=utterance)
+        return json.dumps({"plan": [{"action": "open_url", "args": {"url": url}}]})
     url = vocab.site_lookup(utterance)
     if url is not None:
         ledger.record(event="plan", source="bookmark", utterance=utterance)
@@ -123,9 +128,15 @@ def _voice_loop(executor: Executor, ledger: Ledger, preapproved: bool) -> int:
         if not raw:
             fieldlog.record(outcome="empty", raw="")
             continue
+        # his own name addresses him, it isn't part of the order
+        from .web import _strip_wake
+        addressed = _strip_wake(raw)
+        if not addressed:
+            speak("You have my attention, sir.")
+            continue
         # second hearing: the LLM repairs likely mishears from the vocabulary
         from .planner import correct_transcript
-        transcript = correct_transcript(raw)
+        transcript = correct_transcript(addressed)
         if transcript != raw:
             print(f'  taking that as: "{transcript}"')
         if voice.is_stop(transcript):
@@ -284,21 +295,19 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
             print("The [vision] extra isn't installed, sir "
                   "(pip install -e .[vision]).")
         else:
-            import time
             bindings = gestures.load_bindings()["bindings"]
             print("Bound gestures: " + ", ".join(f"{g} -> {p}" for g, p in bindings.items()))
-            print("Watching (Ctrl+C to stop). This is a test — nothing is executed.")
+            print("A preview window will open so you can see what I see.")
+            print("Esc (or Ctrl+C) closes it. This is a test — nothing is executed.")
             seen = []
 
             def show(name: str) -> None:
                 seen.append(name)
                 print(f"  seen: {name:<10} -> {bindings.get(name) or '(unbound)'}")
 
-            watch = gestures.Watch(on_gesture=show)
-            watch.start()
+            watch = gestures.Watch(on_gesture=show, preview=True)
             try:
-                while True:
-                    time.sleep(0.2)
+                watch.run()  # blocking, on the main thread — OpenCV prefers it
             except KeyboardInterrupt:
                 pass
             finally:
@@ -331,6 +340,9 @@ def main(argv: list[str] | None = None) -> int:
     if argv[:1] == ["stop"]:
         from .web import stop_running
         return stop_running()
+    if argv[:1] == ["keys"]:
+        from .globalkeys import diagnose
+        return diagnose()
     if argv[:1] == ["hud"]:
         from .hud import main as hud_main
         return hud_main()
