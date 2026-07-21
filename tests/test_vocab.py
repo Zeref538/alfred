@@ -203,3 +203,25 @@ def test_hotwords_are_capped_cleaned_and_deduped(vocab_file, monkeypatch):
     words = vocab.hotwords().split(", ")
     assert len(words) == vocab.MAX_HOTWORDS
     assert all(w == w.lower() for w in words)
+
+
+def test_history_names_a_page_by_where_it_is():
+    assert vocab._name_from_location("chess.com", "/daily") == "chess daily"
+    assert vocab._name_from_location("www.chess.com", "/puzzles/rush") == "chess puzzles rush"
+    assert vocab._name_from_location("app.roboflow.com", "/w/acra/annotate").startswith("roboflow")
+
+
+def test_history_names_a_page_by_its_title():
+    # titles are messy: counters, separators, generic halves
+    assert vocab._name_from_title("(1) Facebook") == "facebook"
+    assert vocab._name_from_title("Home - Chess.com") == "chess com"
+    assert vocab._name_from_title("Disney+ | A space to explore") == "disney"
+
+
+def test_private_paths_are_never_learned():
+    # what he searched for, and how he signed in, are not places he goes
+    for path in ("/login", "/signin", "/oauth/callback", "/reset/password",
+                 "/checkout", "/account/security"):
+        assert vocab._PRIVATE_PATH.search(path), path
+    for ordinary in ("/daily", "/puzzles/rush", "/ph/home", "/models"):
+        assert not vocab._PRIVATE_PATH.search(ordinary), ordinary
