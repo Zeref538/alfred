@@ -171,8 +171,8 @@ class TabView:
     def match(self, wanted: str):
         """The best tab for a spoken name — deterministic, local, no model.
 
-        Scored against the title and the host, so "my go trade tab" finds
-        either "GoTrade — Portfolio" or ultra.heygotrade.com.
+        Scored against the title and the host, so "my go ledger tab" finds
+        either "Ledger — Portfolio" or ledger.example.com.
         """
         wanted = re.sub(r"[^a-z0-9 ]", " ", wanted.lower()).strip()
         wanted = re.sub(r"\s+", " ", wanted)
