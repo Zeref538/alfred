@@ -26,6 +26,7 @@ from . import config
 
 VOCAB_FILE = config.DATA_DIR / "vocabulary.yaml"
 SHORTCUTS_FILE = config.DATA_DIR / "shortcuts.yaml"  # the master's own, never rescanned
+HEARING_FILE = config.DATA_DIR / "hearing.yaml"      # words he is always misheard on
 MAX_HOTWORDS = 40  # a short, speakable list; a long one hallucinates itself back
 
 _CHROMIUM_BOOKMARK_FILES = [
@@ -124,8 +125,10 @@ def speakable(term: str) -> str | None:
 
 def _speakable_terms() -> list[str]:
     """Bookmarked site names first — those are what the master actually says."""
-    terms = (list(load_shortcuts()) + list(load().get("sites", {}))
-             + list(config.ALLOWED_APPS))
+    # what he MEANT leads the list, so whisper is biased toward it in the first
+    # place rather than only being corrected afterwards
+    terms = (list(load_hearing().values()) + list(load_shortcuts())
+             + list(load().get("sites", {})) + list(config.ALLOWED_APPS))
     seen = []
     for term in terms:
         name = speakable(term)
@@ -142,6 +145,43 @@ def hotwords() -> str:
 
 def _terms() -> list[str]:
     return _speakable_terms()
+
+
+def load_hearing() -> dict[str, str]:
+    """Words this particular voice is always misheard on: said -> meant.
+
+    Fuzzy matching can't help when the mishearing is a real word in its own
+    right — whisper hears "cloud" and is quite sure, because "cloud" is a
+    perfectly good word. Only the master knows he means Claude, so he says so
+    once and it is applied exactly, at whole-word boundaries.
+    """
+    import yaml
+    if not HEARING_FILE.exists():
+        return {}
+    try:
+        doc = yaml.safe_load(HEARING_FILE.read_text(encoding="utf-8")) or {}
+        pairs = doc.get("corrections", doc)
+        return {str(k).lower().strip(): str(v).strip() for k, v in pairs.items()
+                if str(k).strip() and str(v).strip()}
+    except Exception:
+        return {}
+
+
+def teach_hearing(said: str, meant: str) -> None:
+    import yaml
+    corrections = load_hearing()
+    corrections[said.strip().lower()] = meant.strip()
+    HEARING_FILE.parent.mkdir(parents=True, exist_ok=True)
+    HEARING_FILE.write_text(yaml.safe_dump({"corrections": corrections}, sort_keys=True),
+                            encoding="utf-8")
+
+
+def apply_hearing(text: str) -> str:
+    """Exact whole-word substitution — never partial, so 'clouds' and
+    'cloudflare' are left alone."""
+    for said, meant in load_hearing().items():
+        text = re.sub(rf"\b{re.escape(said)}\b", meant, text, flags=re.IGNORECASE)
+    return text
 
 
 MAX_REPAIRS = 3
@@ -180,6 +220,7 @@ def correct(utterance: str) -> str:
     anywhere in the sentence is never re-inserted, repairs are capped, and a
     repair may never balloon the sentence.
     """
+    utterance = apply_hearing(utterance)  # his own corrections come first
     terms = _terms()
     if not terms:
         return utterance

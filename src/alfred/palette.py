@@ -309,6 +309,23 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
             vocab.remember(name, url)
             print(f'Committed to memory, sir: "{name.strip().lower()}" -> {url.strip()}')
             print('Say "open ' + name.strip().lower() + '" and I shall.')
+    elif command == "hear":
+        # alfred hear cloud = claude
+        from . import vocab
+        said, sep, meant = " ".join(rest).partition("=")
+        if not sep:
+            corrections = vocab.load_hearing()
+            if not corrections:
+                print("No hearing corrections yet, sir. "
+                      "Usage: alfred hear <what I hear> = <what you mean>")
+            for k, v in corrections.items():
+                print(f'  "{k}" -> "{v}"')
+        elif not said.strip() or not meant.strip():
+            print('Usage, sir: alfred hear <what I hear> = <what you mean>')
+        else:
+            vocab.teach_hearing(said, meant)
+            print(f'Noted, sir: when I hear "{said.strip().lower()}" '
+                  f'I shall take it as "{meant.strip()}".')
     elif command == "forget":
         from . import vocab
         name = " ".join(rest).strip().lower()
