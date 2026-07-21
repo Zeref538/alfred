@@ -53,6 +53,7 @@ DEFAULT_PORT = 51789
 BRIDGE_TOKEN_FILE = config.DATA_DIR / "bridge.token"
 BRIDGE_ROUTES = {"/api/tabs", "/api/events"}
 PAIR_TIMEOUT_SECONDS = 90.0
+TELEMETRY_INTERVAL = 2.0
 
 
 def bridge_token() -> str:
@@ -179,6 +180,18 @@ class Session:
             self._idle_timer = threading.Timer(IDLE_GRACE_SECONDS, self._on_idle)
             self._idle_timer.daemon = True
             self._idle_timer.start()
+
+    def watch_instruments(self, stop: threading.Event) -> None:
+        """Feed the gauges, but only while a window is open to read them —
+        an unwatched panel has no business waking the machine every two seconds."""
+        from . import telemetry
+        while not stop.is_set():
+            if self._subscribers:
+                try:
+                    self.emit(type="telemetry", **telemetry.snapshot())
+                except Exception:
+                    pass
+            stop.wait(TELEMETRY_INTERVAL)
 
     def _try_begin(self) -> bool:
         """Claim the single turn slot; refuse politely if he's already busy."""
@@ -1069,12 +1082,19 @@ def main() -> int:
         except Exception as error:
             print(f"(global J+K unavailable: {error})", flush=True)
 
-    from . import voice
+    from . import telemetry, voice
 
     def _boot() -> None:
         session.greet()   # loads Piper and delivers the spoken boot line
         voice.warm_up()   # then whisper + planner in the background
     threading.Thread(target=_boot, daemon=True).start()
+
+    # the instruments: a fast loop for the cheap readings, a slow one for the
+    # GPU counter, which costs the better part of a second to ask
+    quiet = threading.Event()
+    threading.Thread(target=session.watch_instruments, args=(quiet,),
+                     daemon=True).start()
+    threading.Thread(target=telemetry.watch_gpu, args=(quiet,), daemon=True).start()
     webbrowser.open(url)
     try:
         server.serve_forever()

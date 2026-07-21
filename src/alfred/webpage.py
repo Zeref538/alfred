@@ -68,7 +68,50 @@ __PALETTE__
         linear-gradient(rgba(160,107,255,.045) 1px, transparent 1px) 0 0/100% 46px,
         linear-gradient(90deg, rgba(63,208,255,.035) 1px, transparent 1px) 0 0/46px 100%; }
 
- #frame { width:min(780px,100%); position:relative; padding:1.5rem 1.6rem 1.3rem;
+ /* --- the instrument rail ------------------------------------------------ */
+ #shell { display:flex; gap:1rem; align-items:flex-start;
+        width:min(1080px,100%); }
+ #rail { width:216px; flex:none; position:relative; padding:1.1rem .9rem;
+        border:1px solid var(--line); background:var(--panel);
+        backdrop-filter:blur(3px);
+        box-shadow:0 0 40px rgba(160,107,255,.08),
+                   inset 0 0 50px rgba(63,208,255,.03); }
+ #rail h2 { font-size:.6rem; letter-spacing:.3em; color:var(--vio-dim);
+        text-transform:uppercase; margin-bottom:.9rem;
+        display:flex; align-items:center; gap:.5rem; }
+ #rail h2::after { content:""; flex:1; height:1px;
+        background:linear-gradient(90deg, var(--line), transparent); }
+ .gauge { margin-bottom:1rem; }
+ .gauge .top { display:flex; justify-content:space-between; align-items:baseline;
+        font-size:.6rem; letter-spacing:.18em; text-transform:uppercase;
+        color:var(--vio-dim); margin-bottom:.35rem; }
+ .gauge .top b { font-size:.78rem; letter-spacing:.04em; color:var(--blu);
+        font-variant-numeric:tabular-nums;
+        transition:color .3s; text-shadow:0 0 8px var(--blu-glow); }
+ .gauge .sub { font-size:.56rem; letter-spacing:.1em; color:var(--vio-dim);
+        margin-top:.3rem; text-transform:none; }
+ .track { height:7px; background:rgba(160,107,255,.10);
+        border:1px solid rgba(160,107,255,.16); overflow:hidden; position:relative; }
+ .fill { height:100%; width:0%;
+        background:linear-gradient(90deg, var(--vio), var(--blu));
+        box-shadow:0 0 12px var(--blu-glow);
+        transition:width .8s cubic-bezier(.22,1,.36,1), background .4s; }
+ .fill::after { content:""; position:absolute; inset:0;
+        background:linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+        animation:shine 2.6s linear infinite; }
+ @keyframes shine { 0% { transform:translateX(-100%) } 100% { transform:translateX(100%) } }
+ .gauge.warm .fill { background:linear-gradient(90deg, var(--gold), #ff9a5c); }
+ .gauge.warm .top b { color:var(--gold); text-shadow:0 0 8px rgba(255,198,92,.5); }
+ .gauge.hot .fill { background:linear-gradient(90deg, #ff7a5c, var(--red)); }
+ .gauge.hot .top b { color:var(--red); text-shadow:0 0 8px rgba(255,90,110,.5); }
+ #spark { display:flex; align-items:flex-end; gap:2px; height:34px; margin-top:.2rem;
+        border-bottom:1px solid var(--line); }
+ #spark i { flex:1; background:linear-gradient(180deg, var(--blu), var(--vio));
+        min-height:1px; opacity:.75; transition:height .5s ease; }
+ @media (max-width:900px) { #shell { flex-direction:column-reverse; }
+        #rail { width:100%; } }
+
+ #frame { flex:1; min-width:0; position:relative; padding:1.5rem 1.6rem 1.3rem;
         border:1px solid var(--line); background:var(--panel);
         backdrop-filter:blur(3px);
         box-shadow:0 0 60px rgba(160,107,255,.10),
@@ -211,6 +254,25 @@ __PALETTE__
       letter-spacing:.16em; text-transform:uppercase; line-height:1.9; }
  #hint b { color:var(--blu); }
 </style></head><body>
+<div id="shell">
+<aside id="rail">
+ <span class="corner tl"></span><span class="corner br"></span>
+ <h2>the machine</h2>
+ <div class="gauge" id="gCpu"><div class="top"><span>cpu</span><b>—</b></div>
+  <div class="track"><div class="fill"></div></div>
+  <div class="sub" id="sCpu">&nbsp;</div></div>
+ <div class="gauge" id="gGpu"><div class="top"><span>gpu</span><b>—</b></div>
+  <div class="track"><div class="fill"></div></div>
+  <div class="sub" id="sGpu">all engines</div></div>
+ <div class="gauge" id="gRam"><div class="top"><span>memory</span><b>—</b></div>
+  <div class="track"><div class="fill"></div></div>
+  <div class="sub" id="sRam">&nbsp;</div></div>
+ <div class="gauge" id="gDisk"><div class="top"><span>storage</span><b>—</b></div>
+  <div class="track"><div class="fill"></div></div>
+  <div class="sub" id="sDisk">&nbsp;</div></div>
+ <h2>cpu, last minute</h2>
+ <div id="spark"></div>
+</aside>
 <div id="frame">
  <span class="corner tl"></span><span class="corner tr"></span>
  <span class="corner bl"></span><span class="corner br"></span>
@@ -261,6 +323,7 @@ __PALETTE__
  <div id="hint">press <b>__HOLD_LABEL__</b> to listen, press again to send · &#9673; mic (5s) ·
   say &#8220;mute&#8221; / &#8220;unmute&#8221; / &#8220;undo&#8221; · &#9000; CTRL+ALT+C summons me anywhere</div>
 </div>
+</div>
 <script>
 const TOKEN = "__TOKEN__";
 const log = document.getElementById("log");
@@ -292,6 +355,36 @@ setInterval(()=>{ const d = new Date();
   clock.textContent = String(d.getHours()).padStart(2,"0") + ":" +
                       String(d.getMinutes()).padStart(2,"0") + ":" +
                       String(d.getSeconds()).padStart(2,"0"); }, 1000);
+// --- the instruments -------------------------------------------------------
+// A gauge warms as it fills, so the rail can be read at a glance rather than
+// studied: cool is fine, gold is working, red is straining.
+function gauge(id, percent, caption){
+  const box = document.getElementById(id);
+  if (!box) return;
+  const shown = Math.max(0, Math.min(100, percent || 0));
+  box.querySelector(".fill").style.width = shown + "%";
+  box.querySelector("b").textContent = shown.toFixed(0) + "%";
+  box.classList.toggle("warm", shown >= 65 && shown < 85);
+  box.classList.toggle("hot", shown >= 85);
+  if (caption) document.getElementById(caption.id).textContent = caption.text;
+}
+const spark = document.getElementById("spark");
+for (let i = 0; i < 30; i++) spark.append(document.createElement("i"));
+function pushSpark(percent){
+  const bars = spark.querySelectorAll("i");
+  for (let i = 0; i < bars.length - 1; i++)
+    bars[i].style.height = bars[i + 1].style.height || "1px";
+  bars[bars.length - 1].style.height = Math.max(1, percent) + "%";
+}
+function instruments(t){
+  gauge("gCpu", t.cpu, {id:"sCpu", text:"busy " + (t.cpu||0).toFixed(0) + "%"});
+  gauge("gGpu", t.gpu, {id:"sGpu", text:"all engines"});
+  gauge("gRam", t.ram.percent, {id:"sRam",
+        text:t.ram.used + " / " + t.ram.total + " GiB"});
+  gauge("gDisk", t.disk.percent, {id:"sDisk",
+        text:t.disk.used + " / " + t.disk.total + " GB"});
+  pushSpark(t.cpu || 0);
+}
 const gates = document.getElementById("gates");
 function gateCard(e){
   const card = document.createElement("div"); card.className = "gate"; card.id = "g"+e.id;
@@ -323,6 +416,7 @@ const events = new EventSource("/api/events?t="+TOKEN);
 events.onmessage = (m)=>{ const e = JSON.parse(m.data);
   if (e.type === "say") say(e.text, false, e.flash);
   else if (e.type === "subtitle") subtitle.textContent = e.text ? ("“" + e.text + "”") : "";
+  else if (e.type === "telemetry") instruments(e);
   else if (e.type === "state") setState(e.state);
   else if (e.type === "gate") gateCard(e);
   else if (e.type === "gate_done"){ const c = document.getElementById("g"+e.id); if(c) c.remove(); } };
