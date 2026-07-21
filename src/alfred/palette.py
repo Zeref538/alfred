@@ -95,8 +95,10 @@ def _resolve_utterance(utterance: str, ledger: Ledger) -> str:
     wanted_tab = tabs.spoken_tab_name(utterance)
     if wanted_tab and tabs.VIEW.match(wanted_tab) is not None:
         ledger.record(event="plan", source="tab", utterance=utterance)
-        return json.dumps({"plan": [{"action": "focus_tab",
-                                     "args": {"name": wanted_tab}}]})
+        steps = [{"action": "focus_tab", "args": {"name": wanted_tab}}]
+        if tabs.wants_play_after(utterance):  # "...tab and play"
+            steps.append({"action": "media_control", "args": {"command": "play_pause"}})
+        return json.dumps({"plan": steps})
     from . import vocab
     # a spoken domain is unambiguous — never let the model search around it
     url = vocab.url_lookup(utterance)
