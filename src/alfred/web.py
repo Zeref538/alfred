@@ -44,15 +44,38 @@ GREETING = _voice.greeting()
 MAX_HOLD_SECONDS = 20  # backstop for a forgotten second press; also self-heals
 IDLE_GRACE_SECONDS = 3.0  # after the last window closes, dismiss himself
 
-# How whisper actually renders his name when addressed. "alfredo" is spared
-# on purpose — that's a pasta, not a butler.
-_WAKE = re.compile(
-    r"^\s*(?:hey\s+|ok\s+|okay\s+)?"
-    r"(?:alfred|alfrid|alfered|alford|unfred|elfred|alfr[ae]d)\b[\s,:.]*", re.I)
+# Whisper renders his name a dozen ways — alfrid, unfred, unfriend, alford.
+# Listing them was a losing game, so the opening word is simply compared to
+# "alfred" and taken as address if it is close enough. "alfredo" is spared on
+# purpose: that is a pasta, not a butler.
+_WAKE = re.compile(r"^\s*(?:hey\s+|ok\s+|okay\s+)?([a-z]+)\b[\s,:.]*", re.I)
+_WAKE_SIMILARITY = 0.55
+
+# Similarity alone cannot do this: "read" (0.60) and "already" (0.77) both
+# score above "unfriend" (0.57). So a word that genuinely opens an order is
+# never taken as his name, however much it happens to look like it. "alfredo"
+# is spared for the obvious reason.
+_NEVER_HIS_NAME = frozenset("""
+    alfredo open play pause stop skip next previous volume search google launch
+    start close focus minimize maximize mute unmute undo copy read show take
+    visit go put set turn silence quiet dark light window snap bring make find
+    tell give run refresh scroll send write type what where when who how
+""".split())
 
 
 def _strip_wake(text: str) -> str:
-    return _WAKE.sub("", text).strip()
+    from difflib import SequenceMatcher
+    match = _WAKE.match(text)
+    if not match:
+        return text.strip()
+    first = match.group(1).lower()
+    if first == "alfred":
+        return text[match.end():].strip()
+    if first in _NEVER_HIS_NAME:
+        return text.strip()
+    if SequenceMatcher(None, first, "alfred").ratio() >= _WAKE_SIMILARITY:
+        return text[match.end():].strip()
+    return text.strip()
 
 
 class Session:

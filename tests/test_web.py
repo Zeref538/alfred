@@ -192,6 +192,15 @@ def test_strip_wake_word():
     assert _strip_wake("Alfred. volume 30") == "volume 30"
     assert _strip_wake("alfred") == ""          # addressed, no order given
     assert _strip_wake("alfredo pasta recipe") == "alfredo pasta recipe"  # not the name
+    # whisper's many manglings of his name, all address rather than command
+    for heard in ("unfriend, go to my github repositories",
+                  "unfred open open", "alfrid volume 30", "alford, open youtube"):
+        assert not _strip_wake(heard).lower().startswith(heard.split(",")[0].lower())
+    assert _strip_wake("unfriend, go to my github repositories") == \
+        "go to my github repositories"
+    # ordinary openers must survive untouched
+    for kept in ("open youtube", "play stranger things", "volume 30", "search cats"):
+        assert _strip_wake(kept) == kept
 
 
 def test_unknown_route_is_404(server):
