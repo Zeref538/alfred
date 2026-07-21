@@ -25,6 +25,7 @@ import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from . import config
 from .adapters import build_adapters
 from .executor import Executor
 from .gate import Etiquette, clear_plan, is_seal_phrase
@@ -43,6 +44,26 @@ from . import voice as _voice  # light at import; the models load lazily
 GREETING = _voice.greeting()
 MAX_HOLD_SECONDS = 20  # backstop for a forgotten second press; also self-heals
 IDLE_GRACE_SECONDS = 3.0  # after the last window closes, dismiss himself
+
+# The bridge needs a fixed address and a key that outlives the session, or the
+# extension could never reconnect by itself. The HUD keeps its per-session
+# token; the extension gets its own, which the master approves once and which
+# opens only the two bridge routes — never a route that can command anything.
+DEFAULT_PORT = 51789
+BRIDGE_TOKEN_FILE = config.DATA_DIR / "bridge.token"
+BRIDGE_ROUTES = {"/api/tabs", "/api/events"}
+PAIR_TIMEOUT_SECONDS = 90.0
+
+
+def bridge_token() -> str:
+    existing = BRIDGE_TOKEN_FILE.exists() and BRIDGE_TOKEN_FILE.read_text(
+        encoding="utf-8").strip()
+    if existing:
+        return existing
+    minted = secrets.token_urlsafe(24)
+    BRIDGE_TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+    BRIDGE_TOKEN_FILE.write_text(minted, encoding="utf-8")
+    return minted
 
 # Whisper renders his name a dozen ways — alfrid, unfred, unfriend, alford.
 # Listing them was a losing game, so the opening word is simply compared to
@@ -97,6 +118,7 @@ class Session:
         self._recorder = None     # hold-to-talk recorder, when a key is held
         self._hold_timer = None
         self.global_keys = False  # set when the global chord is armed
+        self._pairing = False     # a bridge pairing request is on screen
         from . import tabs
         tabs.set_emitter(self.emit)  # the extension hears switches on the SSE
         self._turn = threading.Lock()  # one command at a time — no overlapping turns
@@ -141,16 +163,34 @@ class Session:
 
     # --- the etiquette gate over the wire ------------------------------------
 
-    def _ask_page(self, kind: str, summary: str) -> bool:
+    def _ask_page(self, kind: str, summary: str, timeout: float | None = None) -> bool:
         gate_id = secrets.token_urlsafe(8)
         answers: queue.Queue = queue.Queue()
         self._gates[gate_id] = (kind, answers)
         self.emit(type="gate", kind=kind, id=gate_id, summary=summary)
         try:
-            return answers.get()
+            return answers.get(timeout=timeout) if timeout else answers.get()
+        except queue.Empty:
+            return False  # unanswered is not consent
         finally:
             self._gates.pop(gate_id, None)
             self.emit(type="gate_done", id=gate_id)
+
+    def approve_bridge(self) -> bool:
+        """A browser extension is asking to connect. Only the master, at the
+        HUD, may say yes — an unanswered request is a refusal."""
+        if self._pairing:
+            return False  # one at a time; no stampede of prompts
+        self._pairing = True
+        try:
+            self.say("A browser extension is asking to connect, sir.")
+            return self._ask_page(
+                "confirm",
+                "A browser extension asks to see your open tabs "
+                "(titles and hosts only) and switch between them",
+                timeout=PAIR_TIMEOUT_SECONDS)
+        finally:
+            self._pairing = False
 
     def answer_gate(self, gate_id: str, go: bool, phrase: str = "") -> bool:
         entry = self._gates.get(gate_id)
@@ -584,12 +624,25 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
         def _host_ok(self) -> bool:
             return self.headers.get("Host") == f"127.0.0.1:{server.server_address[1]}"
 
-        def _token_ok(self) -> bool:
+        def _presented(self) -> str:
             header = self.headers.get("Authorization", "")
-            if header == f"Bearer {token}":
-                return True
+            if header.startswith("Bearer "):
+                return header[7:]
             _, _, query = self.path.partition("?")
-            return f"t={token}" in query.split("&")
+            for part in query.split("&"):
+                if part.startswith("t="):
+                    return part[2:]
+            return ""
+
+        def _token_ok(self) -> bool:
+            presented = self._presented()
+            if presented and secrets.compare_digest(presented, token):
+                return True
+            # the extension's long-lived key opens the bridge routes ONLY, so a
+            # leaked bridge key can never command anything
+            route = self.path.partition("?")[0]
+            return bool(presented and route in BRIDGE_ROUTES
+                        and secrets.compare_digest(presented, bridge_token()))
 
         def _deny(self, code: int, why: str) -> None:
             self.send_response(code)
@@ -661,6 +714,24 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                 self._deny(404, "not on the menu")
 
         def do_POST(self) -> None:
+            # Pairing is the one route without a key — the extension has no way
+            # to know one yet. It is safe because it hands nothing over until
+            # the master clicks approve at the HUD, and it still has to come
+            # through the right door (the Host check below).
+            if self.path.partition("?")[0] == "/api/pair":
+                if not self._host_ok():
+                    self._deny(403, "wrong door")
+                    return
+                if not session.approve_bridge():
+                    self._deny(403, "not approved, sir")
+                    return
+                payload = json.dumps({"token": bridge_token()}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(payload)
+                session.say("Browser bridge connected, sir.")
+                return
             if not self._guard():
                 return
             length = int(self.headers.get("Content-Length", 0) or 0)
@@ -834,7 +905,10 @@ def main() -> int:
 
     token = secrets.token_urlsafe(24)
     session = Session()
-    server = make_server(session, token)
+    try:  # a known port, so the extension can find him without being told
+        server = make_server(session, token, port=DEFAULT_PORT)
+    except OSError:
+        server = make_server(session, token)  # taken — fall back to any free one
     port = server.server_address[1]
     url = f"http://127.0.0.1:{port}/?t={token}"
     session._on_idle = lambda: threading.Thread(

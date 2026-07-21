@@ -173,6 +173,13 @@ def request_focus(tab_id) -> None:
     _emit(type="tab_focus", id=tab_id)
 
 
+def request_play(url: str) -> None:
+    """Ask the extension to open a media page and press play on it."""
+    if _emit is None:
+        raise RuntimeError("the browser bridge isn't connected, sir")
+    _emit(type="play_request", url=url)
+
+
 # Requiring the word "tab" keeps this explicit: an ordinary "open youtube"
 # still opens a page, and only a deliberate "…tab" reaches into the browser.
 _TAB_PHRASE = re.compile(
