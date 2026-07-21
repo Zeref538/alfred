@@ -107,7 +107,7 @@ def _resolve_utterance(utterance: str, ledger: Ledger) -> str:
     url = vocab.play_lookup(utterance)
     if url is not None:
         ledger.record(event="plan", source="play", utterance=utterance)
-        return json.dumps({"plan": [{"action": "open_url", "args": {"url": url}}]})
+        return json.dumps({"plan": [{"action": "play_media", "args": {"url": url}}]})
     url = vocab.site_lookup(utterance)
     if url is not None:
         ledger.record(event="plan", source="bookmark", utterance=utterance)
