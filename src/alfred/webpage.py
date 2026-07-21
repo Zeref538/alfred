@@ -253,6 +253,61 @@ __PALETTE__
  #hint { margin-top:.9rem; font-size:.62rem; color:var(--vio-dim);
       letter-spacing:.16em; text-transform:uppercase; line-height:1.9; }
  #hint b { color:var(--blu); }
+
+ /* --- the three pages ----------------------------------------------------- */
+ #tabs { display:flex; gap:.35rem; margin:.2rem 0 .8rem; }
+ .tab { flex:1; text-align:center; padding:.45rem .3rem; cursor:pointer;
+      border:1px solid var(--line); background:rgba(160,107,255,.05);
+      font-size:.62rem; letter-spacing:.24em; text-transform:uppercase;
+      color:var(--vio-dim); transition:color .25s, border-color .25s,
+      background .25s, box-shadow .25s; }
+ .tab:hover { color:var(--vio-soft); }
+ .tab.on { color:var(--blu); border-color:rgba(63,208,255,.6);
+      background:linear-gradient(180deg, rgba(63,208,255,.14), transparent);
+      box-shadow:0 0 16px rgba(63,208,255,.20); }
+ #deck { overflow:hidden; }
+ #track { display:flex; width:300%;
+      transition:transform .55s cubic-bezier(.65,0,.35,1); }
+ .page { width:33.3333%; flex:none; padding:0 2px; }
+ #track.p1 { transform:translateX(0) }
+ #track.p2 { transform:translateX(-33.3333%) }
+ #track.p3 { transform:translateX(-66.6666%) }
+
+ /* the voice page: one big instrument and the words, nothing else */
+ #stage { height:310px; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:1.2rem;
+      border:1px solid var(--line); background:
+      radial-gradient(420px 220px at 50% 55%, rgba(160,107,255,.10), transparent 70%),
+      rgba(6,4,14,.75); }
+ #bigviz { display:flex; align-items:center; gap:4px; height:110px; }
+ #bigviz i { width:5px; height:8px; border-radius:3px;
+      background:linear-gradient(180deg, var(--blu), var(--vio)); opacity:.55; }
+ #stage.listening #bigviz i { background:linear-gradient(180deg, #ffe2ac, var(--gold));
+      opacity:1; animation:tall 1s ease-in-out infinite; }
+ #stage.speaking #bigviz i { background:linear-gradient(180deg, #bfefff, var(--blu));
+      opacity:1; animation:tall .62s ease-in-out infinite; }
+ @keyframes tall { 0%,100% { height:10px } 50% { height:96px } }
+ #bigsub { min-height:2.4rem; max-width:80%; text-align:center; font-size:1.15rem;
+      color:#eaf7ff; text-shadow:0 0 14px var(--blu-glow); line-height:1.5; }
+ #stagehint { font-size:.62rem; letter-spacing:.2em; text-transform:uppercase;
+      color:var(--vio-dim); }
+
+ /* the video page: the camera as he sees it */
+ #screen { height:310px; border:1px solid var(--line); position:relative;
+      background:rgba(6,4,14,.85); display:flex; align-items:center;
+      justify-content:center; overflow:hidden; }
+ #cam { max-width:100%; max-height:100%; display:none;
+      filter:saturate(1.15) contrast(1.05); }
+ #camoff { text-align:center; color:var(--vio-dim); font-size:.72rem;
+      letter-spacing:.12em; line-height:2; padding:1rem; }
+ #camoff b { display:block; color:var(--gold); letter-spacing:.2em;
+      text-transform:uppercase; font-size:.66rem; margin-bottom:.5rem; }
+ #screen::after { content:""; position:absolute; left:0; right:0; height:2px;
+      background:linear-gradient(90deg, transparent, var(--blu), transparent);
+      opacity:.5; animation:scanline 3.4s linear infinite; }
+ @keyframes scanline { 0% { top:0 } 100% { top:100% } }
+ #camrow { display:flex; gap:.5rem; align-items:center; margin-top:.6rem;
+      flex-wrap:wrap; }
 </style></head><body>
 <div id="shell">
 <aside id="rail">
@@ -301,7 +356,42 @@ __PALETTE__
   <button id="attuneBtn">⟡ attune to me</button>
  </div>
  <div id="subtitle"></div>
- <div id="log"></div><div id="gates"></div>
+ <div id="tabs">
+  <div class="tab on" data-page="1">◇ chat</div>
+  <div class="tab" data-page="2">◉ voice</div>
+  <div class="tab" data-page="3">▣ video</div>
+ </div>
+ <div id="deck"><div id="track" class="p1">
+
+  <section class="page">
+   <div id="log"></div><div id="gates"></div>
+  </section>
+
+  <section class="page">
+   <div id="stage">
+    <div id="bigviz"></div>
+    <div id="bigsub">Press the chord and speak, sir.</div>
+    <div id="stagehint">what I hear appears here, before anything is done</div>
+   </div>
+  </section>
+
+  <section class="page">
+   <div id="screen">
+    <img id="cam" alt="the camera, as Alfred sees it">
+    <div id="camoff"><b>the camera is closed</b>
+     Switch it on and you'll see exactly what I see —<br>
+     the hand drawn as joints and bones, and the sign I read from it.<br>
+     It opens only while you leave this on.</div>
+   </div>
+   <div id="camrow">
+    <label title="webcam reads hand gestures on demand; every gesture is confirmed before it acts">
+     <input type="checkbox" id="gestures"> &#128400; camera &amp; gestures</label>
+    <span style="color:var(--vio-dim);font-size:.62rem;letter-spacing:.14em">
+     open palm · fist · peace · point · thumbs up</span>
+   </div>
+  </section>
+
+ </div></div>
  <div id="bar">
   <input id="text" type="text" placeholder="your word is my command, sir…" autofocus>
   <button id="mic" title="push-to-talk, 5 seconds">◉ mic</button>
@@ -316,8 +406,6 @@ __PALETTE__
   <button data-cmd="forgettabs" title="wipe my view of your browser at once">forget tabs</button>
   <label title="webcam rings the stop bell on a big wave — never commands">
    <input type="checkbox" id="motion"> &#128247; motion bell</label>
-  <label title="webcam reads hand gestures on demand; every gesture is confirmed before it acts">
-   <input type="checkbox" id="gestures"> &#128400; gestures</label>
   <button id="cog" style="margin-left:auto" title="settings">&#9881; settings</button>
  </div>
  <div id="hint">press <b>__HOLD_LABEL__</b> to listen, press again to send · &#9673; mic (5s) ·
@@ -342,13 +430,59 @@ function say(t, me, flash){ const line = document.createElement("div");
 function post(path, body){ return fetch(path, {method:"POST",
   headers:{"Authorization":"Bearer "+TOKEN,"Content-Type":"application/json"},
   body:JSON.stringify(body||{})}); }
+const stage = document.getElementById("stage");
+const bigsub = document.getElementById("bigsub");
+const bigviz = document.getElementById("bigviz");
+for (let i = 0; i < 26; i++){
+  const bar = document.createElement("i");
+  bar.style.animationDelay = (i % 9) * 0.07 + "s";
+  bigviz.append(bar);
+}
 function setState(s){
   reactor.className = s === "idle" ? "" : s;
   stateEl.textContent = s === "idle" ? "nominal" : s;
   chipState.textContent = s === "idle" ? "nominal" : s;
   chipState.parentElement.classList.toggle("hot", s !== "idle");
   viz.className = (s === "listening" || s === "speaking") ? s : "";
-  if (s === "listening") subtitle.textContent = "";  // a fresh turn begins
+  stage.className = (s === "listening" || s === "speaking") ? s : "";
+  if (s === "listening"){ subtitle.textContent = ""; bigsub.textContent = "Listening…"; }
+}
+// --- the three pages -------------------------------------------------------
+const track = document.getElementById("track");
+const tabs = [...document.querySelectorAll(".tab")];
+let page = 1;
+function show(n){
+  page = Math.max(1, Math.min(3, n));
+  track.className = "p" + page;
+  tabs.forEach(t => t.classList.toggle("on", +t.dataset.page === page));
+  if (page === 2) document.getElementById("text").blur();
+  if (page !== 3) camStream(false);   // leaving the video page lets go of it
+}
+tabs.forEach(t => t.onclick = ()=>show(+t.dataset.page));
+addEventListener("keydown",(e)=>{
+  if (typingNow()) return;
+  if (e.key === "ArrowRight") show(page + 1);
+  if (e.key === "ArrowLeft") show(page - 1);
+});
+// swipe, for a touchscreen
+let swipeFrom = null;
+document.getElementById("deck").addEventListener("touchstart",
+  (e)=>{ swipeFrom = e.changedTouches[0].clientX; }, {passive:true});
+document.getElementById("deck").addEventListener("touchend", (e)=>{
+  if (swipeFrom === null) return;
+  const moved = e.changedTouches[0].clientX - swipeFrom;
+  if (Math.abs(moved) > 60) show(page + (moved < 0 ? 1 : -1));
+  swipeFrom = null; }, {passive:true});
+// --- the camera ------------------------------------------------------------
+// The <img> is only given a source while the master is looking at it, so the
+// stream is not held open behind his back.
+const cam = document.getElementById("cam");
+const camoff = document.getElementById("camoff");
+function camStream(on){
+  if (on){ cam.src = "/api/camera.mjpg?t=" + TOKEN; cam.style.display = "block";
+           camoff.style.display = "none"; }
+  else { cam.removeAttribute("src"); cam.style.display = "none";
+         camoff.style.display = "block"; }
 }
 const clock = document.getElementById("clock");
 setInterval(()=>{ const d = new Date();
@@ -415,7 +549,10 @@ function gateCard(e){
 const events = new EventSource("/api/events?t="+TOKEN);
 events.onmessage = (m)=>{ const e = JSON.parse(m.data);
   if (e.type === "say") say(e.text, false, e.flash);
-  else if (e.type === "subtitle") subtitle.textContent = e.text ? ("“" + e.text + "”") : "";
+  else if (e.type === "subtitle"){
+    const quoted = e.text ? ("“" + e.text + "”") : "";
+    subtitle.textContent = quoted;
+    bigsub.textContent = quoted || "Press the chord and speak, sir."; }
   else if (e.type === "telemetry") instruments(e);
   else if (e.type === "state") setState(e.state);
   else if (e.type === "gate") gateCard(e);
@@ -447,7 +584,12 @@ if (!GLOBAL_KEYS) {
 say("__GREETING__", false);  // the boot line (audio is spoken server-side)
 document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>post("/api/command",{name:b.dataset.cmd}));
 document.getElementById("motion").onchange = (e)=>post("/api/motion",{enable:e.target.checked});
-document.getElementById("gestures").onchange = (e)=>post("/api/gestures",{enable:e.target.checked});
+document.getElementById("gestures").onchange = (e)=>{
+  post("/api/gestures",{enable:e.target.checked});
+  // give the camera a moment to open before asking it for pictures
+  if (e.target.checked) setTimeout(()=>{ if (page === 3) camStream(true); }, 1200);
+  else camStream(false);
+};
 document.getElementById("cog").onclick = ()=>{ location.href = "/settings?t="+TOKEN; };
 document.getElementById("attuneBtn").onclick = (e)=>{
   e.target.disabled = true; e.target.textContent = "attuning…";
