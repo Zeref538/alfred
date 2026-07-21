@@ -68,3 +68,15 @@ def test_watch_refuses_without_the_model(tmp_path, monkeypatch):
     monkeypatch.setattr(gestures, "available", lambda: True)
     with pytest.raises(RuntimeError, match="gestures setup"):
         gestures.Watch(lambda g: None).start()
+
+
+def test_hand_bones_join_only_real_landmarks():
+    # the skeleton is drawn from these; a stray index would crash mid-frame
+    for a, b in gestures.HAND_BONES:
+        assert 0 <= a <= 20 and 0 <= b <= 20 and a != b
+    assert len(gestures.HAND_BONES) == 21   # 5 fingers + palm strapping
+
+
+def test_a_watch_holds_no_frame_until_it_runs():
+    watch = gestures.Watch(lambda g: None, stream=True)
+    assert watch.latest_jpeg() is None

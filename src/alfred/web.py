@@ -686,7 +686,9 @@ class Session:
         if enable and self._gestures is None:
             try:
                 from .gestures import Watch
-                watch = Watch(on_gesture=self._on_gesture)
+                # the HUD shows the camera itself, so no desktop window
+                watch = Watch(on_gesture=self._on_gesture,
+                              preview=False, stream=True)
                 watch.start()
                 self._gestures = watch
                 self.say("The camera is open for gestures, sir — "
@@ -839,6 +841,30 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(payload.encode("utf-8"))
+            elif route == "/api/camera.mjpg":
+                # The camera as Alfred sees it, skeleton and all. Frames come
+                # from the gesture watch, so this shows something only while
+                # the master has the camera switched on — it can never turn it
+                # on by itself.
+                self.send_response(200)
+                self.send_header("Content-Type",
+                                 "multipart/x-mixed-replace; boundary=frame")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                import time as _time
+                try:
+                    while True:
+                        watch = session._gestures
+                        frame = watch.latest_jpeg() if watch else None
+                        if frame:
+                            self.wfile.write(b"--frame\r\nContent-Type: image/jpeg\r\n"
+                                             b"Content-Length: "
+                                             + str(len(frame)).encode() + b"\r\n\r\n"
+                                             + frame + b"\r\n")
+                            self.wfile.flush()
+                        _time.sleep(0.08)
+                except (OSError, ValueError):
+                    pass
             elif route == "/api/events":
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream")
