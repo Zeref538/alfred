@@ -244,12 +244,66 @@ def speakable(term: str) -> str | None:
     return cleaned if 3 <= len(cleaned) <= 20 else None
 
 
+_USERASSIST = r"Software\Microsoft\Windows\CurrentVersion\Explorer\UserAssist"
+
+
+def app_usage() -> dict[str, int]:
+    """Program name -> how often it has been run, from Windows' own record.
+
+    Only the NAME is taken. The full path is deliberately discarded and never
+    stored: where a program lives says a great deal about a person that Alfred
+    has no use for, and this data is read to rank names he already knows —
+    nothing more.
+    """
+    import codecs
+    import struct
+    try:
+        import winreg
+    except ImportError:
+        return {}
+    used: dict[str, int] = {}
+    try:
+        root = winreg.OpenKey(winreg.HKEY_CURRENT_USER, _USERASSIST)
+    except OSError:
+        return {}
+    for i in range(winreg.QueryInfoKey(root)[0]):
+        try:
+            counts = winreg.OpenKey(root, winreg.EnumKey(root, i) + r"\Count")
+        except OSError:
+            continue
+        for j in range(winreg.QueryInfoKey(counts)[1]):
+            try:
+                name, data, _ = winreg.EnumValue(counts, j)
+            except OSError:
+                break
+            decoded = codecs.decode(name, "rot_13")
+            if not decoded.lower().endswith(".exe") or len(data) < 8:
+                continue
+            stem = decoded.replace("/", "\\").rsplit("\\", 1)[-1][:-4].lower()
+            runs = struct.unpack("<I", data[4:8])[0]
+            if stem:
+                used[stem] = max(used.get(stem, 0), runs)
+    return used
+
+
+def _apps_by_use() -> list[str]:
+    """The app roster, most-used first, so the names he actually says lead."""
+    used = app_usage()
+
+    def rank(name: str) -> int:
+        target = str(config.ALLOWED_APPS.get(name, ""))
+        stem = target.replace("/", "\\").rsplit("\\", 1)[-1].lower().removesuffix(".exe")
+        return max(used.get(stem, 0), used.get(name.lower(), 0))
+
+    return sorted(config.ALLOWED_APPS, key=rank, reverse=True)
+
+
 def _speakable_terms() -> list[str]:
     """Bookmarked site names first — those are what the master actually says."""
     # what he MEANT leads the list, so whisper is biased toward it in the first
     # place rather than only being corrected afterwards
     terms = (list(load_hearing().values()) + list(load_shortcuts())
-             + list(load().get("sites", {})) + list(config.ALLOWED_APPS))
+             + list(load().get("sites", {})) + _apps_by_use())
     seen = []
     for term in terms:
         name = speakable(term)
