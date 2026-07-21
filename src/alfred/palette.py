@@ -21,6 +21,7 @@ only — the seal is never pre-answered.
 """
 
 import json
+import re
 import sys
 
 from .adapters import build_adapters
@@ -82,13 +83,69 @@ def run_plan(raw: str, executor: Executor, preapproved: bool = False) -> bool:
     return all(r.ok for r in results)
 
 
+# A second order tacked on with "and"/"then". The fast paths each resolve ONE
+# intent, so on a compound they answer the first and quietly drop the rest —
+# "open my github repos and set volume to 30" opened GitHub and forgot the
+# volume. Anything compound goes to the model, which can plan several steps.
+# "…and play" is spared: the tab fast path already handles that pairing.
+_SECOND_INTENT = re.compile(
+    r"\b(?:and|then|also|after that)\s+(?!play\b)"
+    r"(open|play|set|turn|mute|unmute|search|google|launch|start|switch|snap|"
+    r"make|put|close|minimi[sz]e|maximi[sz]e|volume|copy|read|show|silence|"
+    r"pause|skip|dark|light)\b")
+
+
+def is_compound(utterance: str) -> bool:
+    return bool(_SECOND_INTENT.search(utterance.lower()))
+
+
+def split_clauses(utterance: str) -> list[str]:
+    """'open youtube and set the volume to 20' -> the two orders.
+
+    Handing the whole sentence to a 2B model was unreliable — asked for GitHub
+    and a volume, it answered with a tab and a search and forgot the volume.
+    Split at the conjunction and each half becomes a simple order the fast
+    paths and the model both handle well.
+    """
+    parts, rest = [], utterance
+    while True:
+        found = _SECOND_INTENT.search(rest.lower())
+        if not found:
+            break
+        parts.append(rest[:found.start()].strip())
+        rest = re.sub(r"^(?:and|then|also|after that)\s+", "",
+                      rest[found.start():].strip(), flags=re.IGNORECASE)
+    parts.append(rest.strip())
+    return [p.strip(" ,.") for p in parts if p.strip(" ,.")]
+
+
 def _resolve_utterance(utterance: str, ledger: Ledger) -> str:
-    """Customs first, then bookmarked sites, then the planner. Raises Refusal."""
+    """Customs, then the deterministic fast paths, then the planner.
+
+    The fast paths are exact but each resolves a SINGLE intent, so anything
+    compound is handed to the model instead — it is the only part of Alfred
+    that can plan several steps. Raises Refusal.
+    """
     from .customs import HouseCustoms
     plan = HouseCustoms().match(utterance)
     if plan is not None:
         ledger.record(event="plan", source="customs", utterance=utterance)
         return plan
+    if is_compound(utterance):
+        from . import config
+        steps, refused = [], []
+        for clause in split_clauses(utterance):
+            try:  # each clause gets the whole pipeline, model included
+                steps.extend(json.loads(_resolve_utterance(clause, ledger)).get("plan", []))
+            except Refusal as refusal:
+                refused.append(f"{clause} ({refusal})")
+        if not steps:
+            raise Refusal("I couldn't make sense of any of that, sir.")
+        if refused:  # never drop part of an order silently
+            print(f"  (I can't do: {'; '.join(refused)})")
+        ledger.record(event="plan", source="compound", utterance=utterance,
+                      clauses=len(steps))
+        return json.dumps({"plan": steps[:config.MAX_PLAN_STEPS]})
     # an already-open tab beats opening a second copy of the same page.
     # Deliberately deterministic and local: no tab title ever reaches the model.
     from . import tabs

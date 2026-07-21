@@ -46,6 +46,11 @@ Rules:
   word that isn't in that list.
 - "skip"/"next song" means media_control next; "pause"/"play" means
   play_pause; "previous" means previous.
+- focus_tab ONLY when the user says "tab" — pass the spoken name, never a URL.
+- play_media needs a real URL, so use it ONLY when the user named the site to
+  play from. Otherwise prefer web_search. NEVER invent a media URL.
+- Several orders in one sentence ("open X and set the volume to 30") means
+  several steps, in the order given. Do not answer only the first.
 - If the request names something the menu can do, do it. Return {"plan": []}
   ONLY when the menu truly cannot fulfil it (deleting, installing, shutting
   down, typing, closing apps) or the request is too vague to act on safely.
@@ -59,6 +64,9 @@ user: open youtube
 {"plan": [{"action": "open_url", "args": {"url": "https://youtube.com"}}]}
 user: open nature
 {"plan": [{"action": "web_search", "args": {"query": "nature"}}]}
+user: open youtube and set the volume to 20
+{"plan": [{"action": "open_url", "args": {"url": "https://youtube.com"}},
+          {"action": "set_volume", "args": {"level": 20}}]}
 user: dark mode and volume to 40
 {"plan": [{"action": "settings_change", "args": {"key": "app_theme", "value": "dark"}},
           {"action": "set_volume", "args": {"level": 40}}]}

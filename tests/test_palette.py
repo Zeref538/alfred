@@ -40,3 +40,21 @@ def test_run_plan_executes_and_prints_results(tmp_path, capsys, monkeypatch):
     ok = run_plan('{"plan": [{"action": "web_search", "args": {"query": "hi"}}]}', executor)
     assert ok is True and hits == ["hi"]
     assert "[ok] web_search" in capsys.readouterr().out
+
+
+def test_compound_is_split_not_dropped():
+    # "open my github repos and set volume to 30" opened GitHub and silently
+    # forgot the volume: each fast path resolves ONE intent.
+    from alfred.palette import is_compound, split_clauses
+    assert is_compound("open my github repos and set volume to 30")
+    assert split_clauses("open youtube and set the volume to 20") == \
+        ["open youtube", "set the volume to 20"]
+    assert split_clauses("silence the notifications and snap this window left") == \
+        ["silence the notifications", "snap this window left"]
+
+
+def test_titles_containing_and_are_not_compound():
+    from alfred.palette import is_compound
+    for single in ("play fire and rain on spotify", "play hide and seek on spotify",
+                   "switch to the disney plus tab and play", "open youtube"):
+        assert not is_compound(single), single
