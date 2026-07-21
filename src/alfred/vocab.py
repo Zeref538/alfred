@@ -194,17 +194,43 @@ _SPOKEN_DOMAIN = re.compile(
 _PATH_FILLER = re.compile(r"^(?:and|then|the|a|an)\s+")
 
 
-def url_lookup(utterance: str) -> str | None:
-    """'open chess.com slash daily puzzles' -> https://chess.com/daily-puzzles.
+def known_hosts() -> dict[str, str]:
+    """Hosts we can vouch for: the master's shortcuts, his bookmarks, and the
+    well-known table. Nothing else is a place we are willing to send him."""
+    from urllib.parse import urlsplit
+    hosts: dict[str, str] = {}
+    for url in (list(load_shortcuts().values())
+                + list(load().get("sites", {}).values())
+                + list(_COMMON_SITES.values())):
+        host = urlsplit(url).netloc.lower().removeprefix("www.")
+        if host:
+            hosts.setdefault(host, url)
+    return hosts
 
-    A spoken domain is unambiguous, and the planner was throwing the domain
-    away and searching the leftovers ("slash daily puzzles")."""
+
+def url_lookup(utterance: str) -> str | None:
+    """'open chess.com slash daily puzzles' -> https://chess.com/daily-puzzles,
+    but ONLY for a host we already know.
+
+    Speech is not a reliable way to spell a domain. "chess" came through as
+    "chest", and happily opening https://chest.com sent the master to a
+    squatter's page — a mishearing became a navigation to an attacker-friendly
+    address. So a spoken domain must match something we can vouch for; anything
+    else falls through to a search, where the engine's own spelling correction
+    is far better at this than we are.
+    """
     said = re.sub(r"[^a-z0-9 .-]", " ", utterance.lower())
     said = re.sub(r"\s+", " ", said)
     match = _SPOKEN_DOMAIN.search(said)
     if not match:
         return None
-    url = f"https://{match.group(1)}.{match.group(2)}"
+    host = f"{match.group(1)}.{match.group(2)}"
+    known = known_hosts()
+    if host not in known:
+        near = get_close_matches(host, list(known), n=1, cutoff=0.82)
+        if not near:
+            return None  # never fabricate a destination out of a mishearing
+        host = near[0]
     rest = said[match.end():]
     # "slash daily puzzles" -> /daily-puzzles ; a slug, joined as one usually is
     slashed = re.split(r"\bslash\b|/", rest, maxsplit=1)
@@ -212,8 +238,8 @@ def url_lookup(utterance: str) -> str | None:
         tail = _PATH_FILLER.sub("", slashed[1].strip())
         words = [w for w in re.split(r"[ .]+", tail) if w]
         if words:
-            url += "/" + "-".join(words)
-    return url
+            return f"https://{host}/" + "-".join(words)
+    return known[host]  # no path spoken — his own entry, path and all
 
 
 _PLAY = re.compile(r"\bplay\b(.+)")

@@ -88,12 +88,22 @@ def test_common_sites_open_without_the_model(vocab_file, monkeypatch):
     assert vocab.site_lookup("what time is it") is None   # not an open phrase
 
 
-def test_spoken_url_with_slash_path():
-    # "open chess.com slash daily puzzles" searched "slash daily puzzles" before
-    assert vocab.url_lookup("open chess.com slash daily puzzles") == \
-        "https://chess.com/daily-puzzles"
+def test_spoken_url_only_for_hosts_we_know(tmp_path, monkeypatch):
+    monkeypatch.setattr(vocab, "SHORTCUTS_FILE", tmp_path / "shortcuts.yaml")
+    monkeypatch.setattr(vocab, "VOCAB_FILE", tmp_path / "vocabulary.yaml")
+    # github is in the well-known table, so a spoken domain resolves
     assert vocab.url_lookup("go to github dot com") == "https://github.com"
     assert vocab.url_lookup("set the volume to twenty") is None
+    # THE LIVE FAILURE: whisper heard "chess" as "chest" and we opened
+    # https://chest.com — a squatter's page. An unknown host must never be
+    # fabricated from speech; it falls through to a search instead.
+    assert vocab.url_lookup("open chest.com daily puzzles") is None
+    # once the master vouches for it, the same mishearing lands correctly
+    vocab.remember("chess", "https://www.chess.com/daily")
+    assert vocab.url_lookup("open chest.com daily puzzles") == \
+        "https://www.chess.com/daily"
+    assert vocab.url_lookup("open chess.com slash daily puzzles") == \
+        "https://chess.com/daily-puzzles"
 
 
 def test_shortcuts_beat_everything_and_ignore_filler(tmp_path, monkeypatch):
