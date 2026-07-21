@@ -38,6 +38,8 @@ Rules:
 - Use the fewest steps that honestly fulfil the request.
 - A search is exactly one web_search step. NEVER invent URLs — use open_url
   only when the user names a site (then use its https:// domain).
+- A web_search query MUST be built from the user's own words. Never invent a
+  query they did not ask for (no "list of popular ...", no added topics).
 - "open <X>": if X is a well-known website, open_url its https:// domain;
   otherwise web_search X. Use launch_app ONLY when X is EXACTLY one of the
   registered application names listed below — never guess launch_app for a
