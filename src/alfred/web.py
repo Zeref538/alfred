@@ -600,6 +600,34 @@ class Session:
             from . import tabs
             tabs.VIEW.forget()
             self.say("Forgotten, sir — I can see no tabs at all now.")
+        elif name == "privacy":
+            # Not a promise — an inventory. Everything he holds, where it sits,
+            # and how large it is, so it can be read, checked, or deleted.
+            from . import config
+            what = [
+                ("vocabulary.yaml", "bookmarks and most-visited pages"),
+                ("shortcuts.yaml", "pages you named yourself"),
+                ("hearing.yaml", "words you're misheard on"),
+                ("apps.yaml", "installed software (names only)"),
+                ("customs.yaml", "your routines and modes"),
+                ("gestures.yaml", "gesture bindings"),
+                ("tab_privacy.yaml", "sites he must never see"),
+                ("fieldlog.jsonl", "transcripts from your testing"),
+                ("bridge.token", "the browser extension's key"),
+            ]
+            self.say(f"Everything I know lives in {config.DATA_DIR} — "
+                     "on this machine, and nowhere else:")
+            for filename, description in what:
+                path = config.DATA_DIR / filename
+                mark = f"{path.stat().st_size:,}b" if path.exists() else "—"
+                self.say(f"  {mark:>10}  {filename:<18} {description}")
+            pages = list((config.DATA_DIR / "ledger").glob("*.jsonl")) \
+                if (config.DATA_DIR / "ledger").is_dir() else []
+            self.say(f"  {len(pages):>10}  ledger/            "
+                     "what I did, kept 30 days ('burn' erases today)")
+            self.say("Open tabs are held in memory only and never written down.")
+            self.say("Nothing here is uploaded: no account, no telemetry, no "
+                     "network call but to your own browser and the local model.")
         elif name == "fieldlog":
             from . import fieldlog
             for line in fieldlog.summary().splitlines():
@@ -681,7 +709,10 @@ class Session:
             config.APPS_FILE.parent.mkdir(parents=True, exist_ok=True)
             config.APPS_FILE.write_text(yaml.safe_dump(apps, sort_keys=True),
                                         encoding="utf-8")
-            self.say(f"    {len(apps)} applications registered.")
+            used = vocab.app_usage()
+            self.say(f"    {len(apps)} applications registered; Windows records "
+                     f"{len(used)} of them actually being used, so those names "
+                     "are the ones I listen for first.")
 
             self.say("  · reading your bookmarks and the pages you visit most…")
             learned = vocab.build_vocabulary()
@@ -689,7 +720,9 @@ class Session:
             self.say(f"    {sites} places you go, named as you'd say them.")
 
             self.emit(type="state", state="idle")
-            self.say("Attuned, sir. Try “open” followed by somewhere you go often.")
+            self.say(f"Attuned, sir. All of it sits in {config.DATA_DIR} on this "
+                     "machine — press “privacy” to see every item of it.")
+            self.say("Try “open” followed by somewhere you go often.")
             self._speak("Attuned, sir. I know your way around now.")
         except Exception as error:
             self.say(f"My apologies, sir — {type(error).__name__}: {error}")
