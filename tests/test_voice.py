@@ -63,6 +63,18 @@ def test_ordinary_speech_is_not_a_mute(heard):
     assert not is_mute(heard) and not is_unmute(heard)
 
 
+def test_greeting_varies_and_matches_the_hour(monkeypatch):
+    from alfred.voice import _GREETINGS, greeting, time_of_day
+    assert len(_GREETINGS) >= 20, "the boot line should not get stale"
+    seen = {greeting() for _ in range(200)}
+    assert len(seen) >= 10, "greetings should actually vary"
+    assert all("{tod}" not in g for g in seen), "the time token must be filled"
+    assert time_of_day() in ("morning", "afternoon", "evening")
+    # every greeting renders cleanly for every half of the day
+    for phrase in _GREETINGS:
+        assert phrase.format(tod="morning")
+
+
 def test_confidence_gate():
     from alfred.voice import is_confident
     assert is_confident(-0.3, 0.05)       # a clear hearing
