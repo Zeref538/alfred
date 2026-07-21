@@ -18,7 +18,12 @@ import time
 from ctypes import wintypes
 
 CPU_INTERVAL = 1.0
-GPU_INTERVAL = 6.0     # the counter read is expensive; ask rarely
+# The GPU counter is read by spawning PowerShell, which takes about four
+# seconds. At a six-second gap that left PowerShell running 41% of the time,
+# for ever — the gauge was costing more of the machine than it was reporting on.
+# Thirty seconds puts the duty cycle near one part in eight, and the watcher
+# only asks at all while somebody is looking at the panel.
+GPU_INTERVAL = 30.0
 GPU_TIMEOUT = 8
 
 
@@ -133,8 +138,11 @@ def snapshot() -> dict:
             "ram": memory(), "disk": storage()}
 
 
-def watch_gpu(stop: threading.Event) -> None:
-    """Refresh the expensive figure on its own thread, out of everyone's way."""
+def watch_gpu(stop: threading.Event, wanted=None) -> None:
+    """Refresh the expensive figure on its own thread, out of everyone's way —
+    and only while `wanted()` says someone is actually looking at it. An
+    unwatched gauge has no business spawning a process every few seconds."""
     while not stop.is_set():
-        gpu_percent(force=True)
+        if wanted is None or wanted():
+            gpu_percent(force=True)
         stop.wait(GPU_INTERVAL)

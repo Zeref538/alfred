@@ -1146,7 +1146,9 @@ def main() -> int:
     quiet = threading.Event()
     threading.Thread(target=session.watch_instruments, args=(quiet,),
                      daemon=True).start()
-    threading.Thread(target=telemetry.watch_gpu, args=(quiet,), daemon=True).start()
+    threading.Thread(target=telemetry.watch_gpu,
+                     args=(quiet, lambda: bool(session._subscribers)),
+                     daemon=True).start()
     webbrowser.open(url)
     try:
         server.serve_forever()
