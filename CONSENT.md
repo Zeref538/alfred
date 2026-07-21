@@ -26,6 +26,7 @@ merely confirmed.
 - `open_url` — open a web page
 - `web_search` — run a web search
 - `focus_app` — bring a window to the front
+- `focus_tab` — switch to a browser tab already open *(see below)*
 - `clipboard_read` — read the clipboard *(never fed to the planner)*
 
 **Tier 1 — announced** (runs, shown, undoable — no yes)
@@ -41,6 +42,26 @@ merely confirmed.
 
 **Tier 3 — under seal** (type `yes i approve please proceed`)
 - `open_file` — open a file from a whitelisted folder
+
+## The browser bridge, and what it may know
+
+Alfred cannot see browser tabs from the operating system, so a small extension
+reports them. That is the largest amount of sight he has, and the limits are
+built into the data structure rather than promised:
+
+| Limit | How it's enforced |
+|---|---|
+| Only a **title and a hostname** are kept | paths and query strings are discarded on arrival — session tokens and document ids are never held at all |
+| **Nothing reaches disk** | held in memory, dies with the process, never written to the ledger or field log |
+| **Nothing reaches the model** | a page can title itself *"ignore previous instructions"*, so tab text never enters a planner prompt; matching is deterministic and local |
+| **Banking and sign-in pages are invisible** | blinded by default; add your own hosts to `~/.alfred/tab_privacy.yaml` |
+| **It expires** | a report older than 90s is not acted on |
+| **Page contents are unreachable** | the extension holds no scripting permission, so it *cannot* read page text, forms or passwords |
+| **It only ever switches** | `focus_tab` moves to a tab already open — it cannot navigate one, close one, or read one |
+| **Off unless installed** | no extension, no sight; **pause** stops all reporting instantly |
+
+Saying "tab" is required (*"switch to my go trade **tab**"*). Without it,
+*"open youtube"* opens a page as before and the browser is never consulted.
 
 ## Why the seal can't be spoken
 
