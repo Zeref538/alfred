@@ -24,13 +24,34 @@ REPORT = [
 ]
 
 
-def test_paths_and_queries_never_survive_the_door():
+def test_credentials_never_survive_the_door():
     tabs.VIEW.update(REPORT)
     for tab in tabs.VIEW.all():
         assert "?" not in tab.host and "/" not in tab.host
-        # the session token in the first URL must be gone entirely
-        assert "SECRET" not in repr(tab)
-        assert "abc123" not in repr(tab)
+        assert "SECRET" not in repr(tab)      # ?session=SECRET is dropped
+    # the path is kept — it says WHICH page — but the credential is not
+    trade = next(t for t in tabs.VIEW.all() if "heygotrade" in t.host)
+    assert trade.path == "/portfolio"
+
+
+@pytest.mark.parametrize("url, expected", [
+    # navigation: keep. these are what tell two tabs on a site apart
+    ("https://github.com/me?tab=repositories", "/me?tab=repositories"),
+    ("https://www.youtube.com/watch?v=dQw4w9Wg", "/watch?v=dQw4w9Wg"),
+    ("https://site.com/docs/page", "/docs/page"),
+    # credentials: drop, by name...
+    ("https://site.com/a?session=abc&tab=x", "/a?tab=x"),
+    ("https://site.com/a?access_token=xyz", "/a"),
+    ("https://site.com/reset?code=123456", "/reset"),
+    # ...and by shape, whatever they are called
+    ("https://site.com/a?r=" + "A1b2C3d4" * 8, "/a"),
+    # fragments never survive
+    ("https://site.com/a#deep-section", "/a"),
+])
+def test_paths_are_kept_but_credentials_filtered(url, expected):
+    tabs.VIEW.forget()
+    tabs.VIEW.update([{"id": 9, "title": "t", "url": url}])
+    assert tabs.VIEW.all()[0].path == expected
 
 
 def test_hosts_are_reduced_to_a_bare_name():
@@ -38,6 +59,15 @@ def test_hosts_are_reduced_to_a_bare_name():
     hosts = {t.host for t in tabs.VIEW.all()}
     assert "ultra.heygotrade.com" in hosts
     assert "youtube.com" in hosts       # www. stripped
+
+
+def test_path_lets_him_tell_two_tabs_on_one_site_apart():
+    tabs.VIEW.update([
+        {"id": 1, "title": "Zeref538", "url": "https://github.com/Zeref538"},
+        {"id": 2, "title": "Repositories",
+         "url": "https://github.com/Zeref538?tab=repositories"},
+    ])
+    assert tabs.VIEW.match("github repositories").id == 2
 
 
 def test_banking_is_blinded_by_default():

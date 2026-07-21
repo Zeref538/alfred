@@ -595,7 +595,7 @@ class Session:
                 self.say(f"{len(seen)} tab(s) visible to me, sir "
                          "(title and host only — no paths, nothing stored):")
                 for tab in seen:
-                    self.say(f"  - {tab.title[:60]} @ {tab.host}")
+                    self.say(f"  - {tab.title[:60]} @ {tab.where}")
         elif name == "forgettabs":
             from . import tabs
             tabs.VIEW.forget()

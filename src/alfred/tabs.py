@@ -76,19 +76,53 @@ def _blinded(host: str, patterns: list[str]) -> bool:
     return False
 
 
+# Query parameters that carry credentials rather than meaning. Dropped by name,
+# and anything long or high-entropy is dropped by shape regardless of its name —
+# a reset link is no less dangerous for being called "r".
+_SECRET_PARAMS = frozenset("""
+    token access_token id_token refresh refresh_token session sessionid sid auth
+    authorization key api_key apikey password pwd pass secret code state nonce
+    signature sig hash otp jwt bearer credential login email phone
+""".split())
+MAX_PARAM_VALUE = 40
+MAX_PATH = 120
+
+
+def _safe_query(query: str) -> str:
+    """Keep the parts of a query that say WHICH page; drop the parts that are
+    credentials. "?tab=repositories" is navigation; "?session=..." is a key."""
+    from urllib.parse import parse_qsl, urlencode
+    kept = []
+    for name, value in parse_qsl(query, keep_blank_values=False):
+        if name.lower() in _SECRET_PARAMS:
+            continue
+        if len(value) > MAX_PARAM_VALUE:      # long values are tokens, not words
+            continue
+        if len(value) > 24 and not any(c in value for c in " -_") \
+                and any(c.isdigit() for c in value) and any(c.isalpha() for c in value):
+            continue                          # base64/hex-looking: treat as secret
+        kept.append((name, value))
+    return urlencode(kept[:6])
+
+
 class Tab:
-    """A tab as Alfred is permitted to know it: an id, a name, a host. No path,
-    no query, no content."""
+    """A tab as Alfred is permitted to know it: an id, a name, a host, and the
+    path that says WHICH page. Never a credential, never page content."""
 
-    __slots__ = ("id", "title", "host")
+    __slots__ = ("id", "title", "host", "path")
 
-    def __init__(self, tab_id, title: str, host: str):
+    def __init__(self, tab_id, title: str, host: str, path: str = ""):
         self.id = tab_id
         self.title = title
         self.host = host
+        self.path = path
+
+    @property
+    def where(self) -> str:
+        return self.host + self.path
 
     def __repr__(self) -> str:
-        return f"Tab({self.title!r} @ {self.host})"
+        return f"Tab({self.title!r} @ {self.where})"
 
 
 class TabView:
@@ -107,13 +141,18 @@ class TabView:
             try:
                 tab_id = item.get("id")
                 title = str(item.get("title", "")).strip()[:120]
-                host = urlsplit(str(item.get("url", ""))).netloc.lower()
+                split = urlsplit(str(item.get("url", "")))
+                host = split.netloc.lower().removeprefix("www.")
+                # the path says which page; the query is filtered to the parts
+                # that mean something; the fragment is dropped entirely
+                path = split.path if split.path != "/" else ""
+                query = _safe_query(split.query)
+                path = (path + ("?" + query if query else ""))[:MAX_PATH]
             except Exception:
                 continue
-            host = host.removeprefix("www.")
             if tab_id is None or not host or _blinded(host, patterns):
-                continue  # the path and query are already gone, and stay gone
-            kept.append(Tab(tab_id, title, host))
+                continue
+            kept.append(Tab(tab_id, title, host, path))
         with self._lock:
             self._tabs, self._at = kept, time.monotonic()
         return len(kept)
@@ -143,12 +182,14 @@ class TabView:
         best, best_score = None, 0.0
         for tab in self.all():
             title = re.sub(r"[^a-z0-9 ]", " ", tab.title.lower())
-            host = tab.host.lower()
+            # the path distinguishes two tabs on the same site: "github repos"
+            # should find github.com/you?tab=repositories, not the bare profile
+            where = re.sub(r"[^a-z0-9]", "", tab.where.lower())
             score = max(
                 SequenceMatcher(None, wanted, title).ratio(),
-                SequenceMatcher(None, squashed, host.replace(".", "")).ratio(),
+                SequenceMatcher(None, squashed, where).ratio(),
                 1.0 if wanted and wanted in title else 0.0,
-                1.0 if squashed and squashed in host.replace(".", "") else 0.0,
+                1.0 if squashed and squashed in where else 0.0,
             )
             if score > best_score:
                 best, best_score = tab, score
