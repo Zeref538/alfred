@@ -1,0 +1,35 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Alfred — tab bridge</title>
+<style>
+ body { background:#04080f; color:#39d7ff; font:13px Consolas, monospace;
+        margin:0; padding:1.2rem; width:380px; }
+ h1 { font-size:.85rem; letter-spacing:.35em; color:#d9f6ff; margin:0 0 .8rem; }
+ p  { color:#1a7fa0; font-size:.72rem; line-height:1.5; margin:.5rem 0; }
+ input { width:100%; background:#060e18; color:#e9fbff; font:inherit;
+         border:1px solid rgba(57,215,255,.35); padding:.5rem; margin:.3rem 0 .6rem; }
+ button { background:transparent; color:#39d7ff; font:inherit; cursor:pointer;
+          border:1px solid rgba(57,215,255,.45); padding:.5rem .8rem;
+          text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; }
+ button:hover { background:rgba(57,215,255,.08); }
+ #pause { border-color:#ffb02e; color:#ffb02e; margin-left:.4rem; }
+ #status { margin-top:.7rem; color:#ffb02e; font-size:.72rem; min-height:1.2em; }
+ .rule { border:0; border-top:1px solid rgba(57,215,255,.18); margin:.9rem 0; }
+</style></head><body>
+<h1>ALFRED — TAB BRIDGE</h1>
+<p>Paste the address Alfred printed when he started (the one with <code>?t=</code>).
+   It carries the port and this session's key.</p>
+<input id="url" placeholder="http://127.0.0.1:52824/?t=...">
+<button id="save">connect</button>
+<button id="pause">pause</button>
+<div id="status"></div>
+<hr class="rule">
+<p><b>What this sends:</b> the title and address of your open tabs, to
+   127.0.0.1 only — never off this machine. Alfred keeps only the title and the
+   hostname; paths and query strings are discarded on arrival and never stored.</p>
+<p><b>What it cannot do:</b> read the contents of any page. It holds no
+   scripting permission, so page text, forms and passwords are out of reach.</p>
+<p><b>To blind him to a site,</b> add it to <code>~/.alfred/tab_privacy.yaml</code>.
+   Banking and sign-in pages are excluded already. <b>Pause</b> stops all
+   reporting at once.</p>
+<script src="options.js"></script>
+</body></html>
