@@ -451,6 +451,22 @@ def main(argv: list[str] | None = None) -> int:
     if argv[:1] == ["stop"]:
         from .web import stop_running
         return stop_running()
+    if argv[:1] == ["install"]:
+        from .shortcut import install
+        made = install()
+        if not made:
+            print("I couldn't place a shortcut, sir.")
+            return 1
+        for link in made:
+            print(f"Placed: {link}")
+        print("Double-click it and I shall appear — no terminal needed.")
+        return 0
+    if argv[:1] == ["uninstall"]:
+        from .shortcut import uninstall
+        gone = uninstall()
+        print(f"Removed {len(gone)} shortcut(s), sir." if gone
+              else "There was no shortcut to remove, sir.")
+        return 0
     if argv[:1] == ["keys"]:
         from .globalkeys import diagnose
         return diagnose()

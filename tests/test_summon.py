@@ -49,3 +49,17 @@ def test_parse_hotkey_default_and_digit():
 def test_parse_hotkey_rejects_bad_combos(bad):
     with pytest.raises(ValueError):
         summon.parse_hotkey(bad)
+
+
+def test_crest_icon_renders_at_every_size(tmp_path):
+    from alfred.shortcut import ICON_SIZES, make_icon
+    from PIL import Image
+    path = make_icon(tmp_path / "alfred.ico")
+    assert path.exists() and path.stat().st_size > 0
+    assert sorted(Image.open(path).info["sizes"]) == sorted((s, s) for s in ICON_SIZES)
+
+
+def test_launcher_prefers_the_windowless_python():
+    # a double-click must not flash a console at anyone
+    from alfred.shortcut import _windowless_python
+    assert _windowless_python().endswith(("pythonw.exe", "python.exe"))
