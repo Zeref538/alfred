@@ -29,6 +29,44 @@ CONFIRM_SECONDS = 3.5
 # Pace, loudness, and model names live in settings (env still wins).
 VOICES_DIR = config.DATA_DIR / "voices"
 
+_GREETINGS = [
+    "Good {tod}, sir. All systems are nominal.",
+    "Good {tod}, sir. Alfred is online and at your service.",
+    "Good {tod}, sir. Everything is in order.",
+    "Good {tod}, sir. The house is in order and I am listening.",
+    "At your service, sir. All systems nominal this {tod}.",
+    "Good {tod}, sir. Standing by.",
+    "Good {tod}, sir. Awaiting your instruction.",
+    "Alfred online, sir. Systems nominal.",
+    "Good {tod}, sir. Ready when you are.",
+    "Good {tod}, sir. All quiet, and all working.",
+    "Systems nominal, sir. A very good {tod} to you.",
+    "Good {tod}, sir. Shall we begin?",
+    "Good {tod}, sir. The service menu is open.",
+    "Back at your side, sir. Good {tod}.",
+    "Good {tod}, sir. Everything checks out.",
+    "Alfred reporting, sir. All systems nominal this {tod}.",
+    "Good {tod}, sir. I have the house well in hand.",
+    "Good {tod}, sir. Whenever you're ready.",
+    "At your service this {tod}, sir. Nothing amiss.",
+    "Good {tod}, sir. All stations green.",
+    "Good {tod}, sir. I'm listening.",
+    "Good {tod}, sir. The bell is answered.",
+]
+
+
+def time_of_day() -> str:
+    import datetime
+    hour = datetime.datetime.now().hour
+    return "morning" if hour < 12 else "afternoon" if hour < 18 else "evening"
+
+
+def greeting() -> str:
+    """A fresh boot line each summoning, and the right half of the day —
+    'good evening' at ten in the morning rather gives the game away."""
+    return random.choice(_GREETINGS).format(tod=time_of_day())
+
+
 _DONE = ["Very good, sir.", "Done, sir.", "As you wish.",
          "Consider it done, sir.", "At once, sir.", "All handled, sir."]
 _STAND_DOWN = ["As you were, sir.", "Very well, sir.", "Standing down, sir.",

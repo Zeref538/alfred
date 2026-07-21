@@ -37,8 +37,10 @@ from .webpage import PAGE
 # consent already obtained (or not needed) — the tiers don't ask twice
 _GRANTED = Etiquette(confirm=lambda s: True, seal=lambda s: True)
 
-GREETING = ("Good evening, sir. All systems are nominal. "
-            "Alfred is online and at your service.")
+from . import voice as _voice  # light at import; the models load lazily
+
+# One boot line per summoning — chosen now so the page and the voice agree.
+GREETING = _voice.greeting()
 MAX_HOLD_SECONDS = 30  # a stuck key can't hold the mic open forever
 IDLE_GRACE_SECONDS = 3.0  # after the last window closes, dismiss himself
 
