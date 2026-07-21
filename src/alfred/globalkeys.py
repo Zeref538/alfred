@@ -49,6 +49,25 @@ class Chord:
             self.on_stop()
 
 
+class Latch:
+    """Push once to begin, push again to send.
+
+    Hold-to-talk proved unworkable globally: the key-release could arrive
+    before the microphone had finished opening, leaving the mic latched open
+    with nothing to close it. A toggle is driven only by chord *engagements*,
+    which are separated by a human interval, so the race cannot happen.
+    """
+
+    def __init__(self, on_begin, on_end):
+        self.on_begin = on_begin
+        self.on_end = on_end
+        self.listening = False
+
+    def engage(self) -> None:
+        self.listening = not self.listening
+        (self.on_begin if self.listening else self.on_end)()
+
+
 def available() -> bool:
     try:
         import keyboard  # noqa: F401
@@ -93,10 +112,13 @@ def diagnose(seconds: int = 15) -> int:
 
 
 def watch(on_start, on_stop) -> None:
-    """Arm the global J+K chord. on_start/on_stop should return quickly — wrap
-    any slow work (recording, transcription) in a thread so the system-wide
-    keyboard hook is never blocked."""
+    """Arm the global chord as a latch: press it to begin listening, press it
+    again to send. on_start/on_stop must return quickly — wrap any slow work
+    (recording, transcription) in a thread so the system-wide keyboard hook is
+    never blocked."""
     import keyboard
-    chord = Chord(hold_keys(), on_start, on_stop)
+    latch = Latch(on_start, on_stop)
+    # only engagements matter now; releasing the keys does nothing
+    chord = Chord(hold_keys(), latch.engage, lambda: None)
     keyboard.on_press(lambda e: chord.press((e.name or "").lower()))
     keyboard.on_release(lambda e: chord.release((e.name or "").lower()))

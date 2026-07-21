@@ -69,6 +69,7 @@ class Session:
         self._muted = False       # "mute" silences his voice; "unmute" restores it
         self._recorder = None     # hold-to-talk recorder, when a key is held
         self._hold_timer = None
+        self.global_keys = False  # set when the global chord is armed
         self._turn = threading.Lock()  # one command at a time — no overlapping turns
         self._on_idle = None      # called when the last window closes (self-dismiss)
         self._ever_connected = False
@@ -251,7 +252,7 @@ class Session:
             return
         self._recorder = recorder
         self.emit(type="state", state="listening")
-        self.say("Listening, sir — release to send.")
+        self.say("Listening, sir — press again to send.")
         self._hold_timer = threading.Timer(MAX_HOLD_SECONDS, self.hold_stop)
         self._hold_timer.daemon = True
         self._hold_timer.start()
@@ -564,6 +565,8 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                 page = (PAGE.replace("__TOKEN__", token)
                         .replace("__GREETING__", GREETING)
                         .replace("__HOLD_KEYS__", json.dumps(keys))
+                        .replace("__GLOBAL_KEYS__",
+                                 "true" if session.global_keys else "false")
                         .replace("__HOLD_LABEL__", "+".join(k.upper() for k in keys)))
                 self.wfile.write(page.encode("utf-8"))
             elif route == "/settings":
@@ -787,7 +790,10 @@ def main() -> int:
             globalkeys.watch(
                 lambda: threading.Thread(target=session.hold_start, daemon=True).start(),
                 lambda: threading.Thread(target=session.hold_stop, daemon=True).start())
-            print("Global J+K hold-to-talk armed — works from any window.", flush=True)
+            session.global_keys = True  # the page stands down; the latch covers it
+            chord = "+".join(k.upper() for k in globalkeys.hold_keys())
+            print(f"Global {chord} armed — press to listen, press again to send.",
+                  flush=True)
         except Exception as error:
             print(f"(global J+K unavailable: {error})", flush=True)
 
