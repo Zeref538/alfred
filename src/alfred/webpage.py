@@ -69,13 +69,10 @@ __PALETTE__
         linear-gradient(90deg, rgba(63,208,255,.035) 1px, transparent 1px) 0 0/46px 100%; }
 
  /* --- the instrument rail ------------------------------------------------ */
- #shell { display:flex; gap:2rem; align-items:flex-start;
-        width:min(1340px,100%); }
- .rail { width:210px; flex:none; position:relative; padding:1.1rem .9rem;
-        border:1px solid var(--line); background:var(--panel);
-        backdrop-filter:blur(3px);
-        box-shadow:0 0 40px rgba(160,107,255,.08),
-                   inset 0 0 50px rgba(63,208,255,.03); }
+ /* the rails sit INSIDE the panel, flanking whichever page is showing —
+    they stay put while only the middle changes */
+ #stagerow { display:flex; gap:1.5rem; align-items:stretch; }
+ .rail { width:178px; flex:none; position:relative; padding:.2rem .1rem; }
  .rail h2 { font-size:.6rem; letter-spacing:.3em; color:var(--vio-dim);
         text-transform:uppercase; margin-bottom:.9rem;
         display:flex; align-items:center; gap:.5rem; }
@@ -116,10 +113,11 @@ __PALETTE__
         border-bottom:1px solid var(--line); }
  #spark i { flex:1; background:linear-gradient(180deg, var(--blu), var(--vio));
         min-height:1px; opacity:.75; transition:height .5s ease; }
- @media (max-width:1180px) { #shell { flex-wrap:wrap; gap:1rem; }
-        .rail { width:calc(50% - .5rem); } #frame { order:-1; width:100%; flex:1 0 100%; } }
+ @media (max-width:1080px) { #stagerow { flex-wrap:wrap; }
+        .rail { width:calc(50% - .75rem); order:2; }
+        #deck { order:1; flex:1 0 100%; } }
 
- #frame { flex:1; min-width:0; position:relative; padding:1.5rem 1.6rem 1.3rem;
+ #frame { width:min(1180px,100%); position:relative; padding:1.5rem 1.6rem 1.3rem;
         border:1px solid var(--line); background:var(--panel);
         backdrop-filter:blur(3px);
         box-shadow:0 0 60px rgba(160,107,255,.10),
@@ -273,7 +271,7 @@ __PALETTE__
  .tab.on { color:var(--blu); border-color:rgba(63,208,255,.6);
       background:linear-gradient(180deg, rgba(63,208,255,.14), transparent);
       box-shadow:0 0 16px rgba(63,208,255,.20); }
- #deck { overflow:hidden; }
+ #deck { overflow:hidden; flex:1; min-width:0; }
  #track { display:flex; width:300%;
       transition:transform .55s cubic-bezier(.65,0,.35,1); }
  .page { width:33.3333%; flex:none; padding:0 2px; }
@@ -300,8 +298,14 @@ __PALETTE__
  #bigsub { min-height:2.6rem; max-width:78%; text-align:center; font-size:1.35rem;
       color:#f0f8ff; text-shadow:0 0 18px var(--blu-glow); line-height:1.45;
       letter-spacing:.01em; }
- #stagehint { font-size:.6rem; letter-spacing:.24em; text-transform:uppercase;
-      color:var(--vio-dim); }
+ /* whose voice the spindle belongs to — his, or yours */
+ #who { display:flex; gap:2.2rem; font-size:.62rem; letter-spacing:.28em;
+      text-transform:uppercase; }
+ #who span { color:rgba(160,107,255,.30); transition:color .3s, text-shadow .3s; }
+ #stage.listening #who .me { color:var(--gold);
+      text-shadow:0 0 12px rgba(255,198,92,.6); }
+ #stage.speaking #who .him { color:var(--blu);
+      text-shadow:0 0 12px var(--blu-glow); }
 
  /* the video page: the picture itself, rounded, with the signs beneath it */
  #screen { height:330px; position:relative; display:flex; align-items:center;
@@ -327,43 +331,6 @@ __PALETTE__
  #camrow { display:flex; gap:.6rem; align-items:center; justify-content:center;
       margin-top:.9rem; flex-wrap:wrap; }
 </style></head><body>
-<div id="shell">
-<aside class="rail" id="railL">
- <span class="corner tl"></span><span class="corner br"></span>
- <h2>the machine</h2>
- <div class="gauge" id="gCpu"><div class="top"><span>cpu</span><b>—</b></div>
-  <div class="track"><div class="fill"></div></div>
-  <div class="sub" id="sCpu">&nbsp;</div></div>
- <div class="gauge" id="gGpu"><div class="top"><span>gpu</span><b>—</b></div>
-  <div class="track"><div class="fill"></div></div>
-  <div class="sub" id="sGpu">all engines</div></div>
- <div class="gauge" id="gRam"><div class="top"><span>memory</span><b>—</b></div>
-  <div class="track"><div class="fill"></div></div>
-  <div class="sub" id="sRam">&nbsp;</div></div>
- <div class="gauge" id="gDisk"><div class="top"><span>storage</span><b>—</b></div>
-  <div class="track"><div class="fill"></div></div>
-  <div class="sub" id="sDisk">&nbsp;</div></div>
- <h2>cpu, last minute</h2>
- <div id="spark"></div>
-</aside>
-<aside class="rail" id="railR">
- <span class="corner tr"></span><span class="corner bl"></span>
- <h2>the butler</h2>
- <div class="stat"><span>brain</span><b id="rModel">—</b></div>
- <div class="stat"><span>hearing</span><b id="rHearing">—</b></div>
- <div class="stat"><span>voice</span><b id="rVoice">—</b></div>
- <div class="stat"><span>pace</span><b id="rPace">—</b></div>
- <h2>what he knows</h2>
- <div class="stat"><span>places</span><b id="rSites">—</b></div>
- <div class="stat"><span>programs</span><b id="rApps">—</b></div>
- <div class="stat"><span>your names</span><b id="rShort">—</b></div>
- <h2>right now</h2>
- <div class="stat"><span>browser</span><b id="rBridge">—</b></div>
- <div class="stat"><span>tabs seen</span><b id="rTabs">—</b></div>
- <div class="stat"><span>camera</span><b id="rCam">—</b></div>
- <div class="stat"><span>undo depth</span><b id="rUndo">—</b></div>
- <div class="stat"><span>on duty</span><b id="rUp">—</b></div>
-</aside>
 <div id="frame">
  <span class="corner tl"></span><span class="corner tr"></span>
  <span class="corner bl"></span><span class="corner br"></span>
@@ -397,6 +364,24 @@ __PALETTE__
   <div class="tab" data-page="2">◉ voice</div>
   <div class="tab" data-page="3">▣ video</div>
  </div>
+ <div id="stagerow">
+<aside class="rail" id="railL">
+ <h2>the machine</h2>
+ <div class="gauge" id="gCpu"><div class="top"><span>cpu</span><b>—</b></div>
+  <div class="track"><div class="fill"></div></div>
+  <div class="sub" id="sCpu">&nbsp;</div></div>
+ <div class="gauge" id="gGpu"><div class="top"><span>gpu</span><b>—</b></div>
+  <div class="track"><div class="fill"></div></div>
+  <div class="sub" id="sGpu">all engines</div></div>
+ <div class="gauge" id="gRam"><div class="top"><span>memory</span><b>—</b></div>
+  <div class="track"><div class="fill"></div></div>
+  <div class="sub" id="sRam">&nbsp;</div></div>
+ <div class="gauge" id="gDisk"><div class="top"><span>storage</span><b>—</b></div>
+  <div class="track"><div class="fill"></div></div>
+  <div class="sub" id="sDisk">&nbsp;</div></div>
+ <h2>cpu, last minute</h2>
+ <div id="spark"></div>
+</aside>
  <div id="deck"><div id="track" class="p1">
 
   <section class="page">
@@ -405,9 +390,9 @@ __PALETTE__
 
   <section class="page">
    <div id="stage">
+    <div id="who"><span class="me">you</span><span class="him">alfred</span></div>
     <div id="bigviz"></div>
     <div id="bigsub">Press the chord and speak, sir.</div>
-    <div id="stagehint">what I hear appears here, before anything is done</div>
    </div>
   </section>
 
@@ -433,6 +418,24 @@ __PALETTE__
   </section>
 
  </div></div>
+<aside class="rail" id="railR">
+ <h2>the butler</h2>
+ <div class="stat"><span>brain</span><b id="rModel">—</b></div>
+ <div class="stat"><span>hearing</span><b id="rHearing">—</b></div>
+ <div class="stat"><span>voice</span><b id="rVoice">—</b></div>
+ <div class="stat"><span>pace</span><b id="rPace">—</b></div>
+ <h2>what he knows</h2>
+ <div class="stat"><span>places</span><b id="rSites">—</b></div>
+ <div class="stat"><span>programs</span><b id="rApps">—</b></div>
+ <div class="stat"><span>your names</span><b id="rShort">—</b></div>
+ <h2>right now</h2>
+ <div class="stat"><span>browser</span><b id="rBridge">—</b></div>
+ <div class="stat"><span>tabs seen</span><b id="rTabs">—</b></div>
+ <div class="stat"><span>camera</span><b id="rCam">—</b></div>
+ <div class="stat"><span>undo depth</span><b id="rUndo">—</b></div>
+ <div class="stat"><span>on duty</span><b id="rUp">—</b></div>
+</aside>
+ </div>
  <div id="bar">
   <input id="text" type="text" placeholder="your word is my command, sir…" autofocus>
   <button id="mic" title="push-to-talk, 5 seconds">◉ mic</button>
@@ -451,7 +454,6 @@ __PALETTE__
  </div>
  <div id="hint">press <b>__HOLD_LABEL__</b> to listen, press again to send · &#9673; mic (5s) ·
   say &#8220;mute&#8221; / &#8220;unmute&#8221; / &#8220;undo&#8221; · &#9000; CTRL+ALT+C summons me anywhere</div>
-</div>
 </div>
 <script>
 const TOKEN = "__TOKEN__";
