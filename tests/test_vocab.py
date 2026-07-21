@@ -125,6 +125,28 @@ def test_shortcuts_beat_everything_and_ignore_filler(tmp_path, monkeypatch):
     assert vocab.site_lookup("open my youtube tab") == "https://my.private.tube"
 
 
+def test_hearing_corrections_are_whole_word_only(tmp_path, monkeypatch):
+    # fuzzy matching cannot help here: "cloud" is a perfectly good word, so
+    # whisper is confident and wrong. Only the master knows he means Claude.
+    monkeypatch.setattr(vocab, "HEARING_FILE", tmp_path / "hearing.yaml")
+    vocab.teach_hearing("cloud", "Claude")
+    assert vocab.apply_hearing("open cloud") == "open Claude"
+    assert vocab.apply_hearing("switch to my cloud tab") == "switch to my Claude tab"
+    assert vocab.apply_hearing("Cloud, open youtube") == "Claude, open youtube"
+    # neighbours that merely contain it must survive untouched
+    for kept in ("cloudflare dashboard", "the clouds are nice", "open icloud"):
+        assert vocab.apply_hearing(kept) == kept
+
+
+def test_hearing_targets_become_hotwords(tmp_path, monkeypatch):
+    monkeypatch.setattr(vocab, "HEARING_FILE", tmp_path / "hearing.yaml")
+    monkeypatch.setattr(vocab, "SHORTCUTS_FILE", tmp_path / "shortcuts.yaml")
+    monkeypatch.setattr(vocab, "VOCAB_FILE", tmp_path / "vocabulary.yaml")
+    vocab.teach_hearing("cloud", "claude")
+    # bias the decoder toward the intended word, not only repair it afterwards
+    assert "claude" in vocab.hotwords()
+
+
 def test_correct_never_runs_away(tmp_path, monkeypatch):
     # THE LIVE FAILURE: with a shortcut "go trade", the word "trade" fuzzy-matched
     # it, became "go go trade", matched again, and recursed into
