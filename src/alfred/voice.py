@@ -111,9 +111,19 @@ def speak_to_wav(text: str, wav_path: str) -> None:
                    timeout=60, env={**os.environ, "ALFRED_TTS_WAV": wav_path})
 
 
-def transcribe(audio) -> str:
-    """audio: a WAV path or a float32 numpy array at SAMPLE_RATE. Known app
-    and bookmark names bias the decoding (whisper hotwords)."""
+# Whisper's own doubt. Below this mean log-probability, or above this
+# no-speech probability, a hearing is not to be acted on without asking —
+# this is what catches noise decoded as confident-sounding nonsense.
+CONFIDENT_LOGPROB = -0.9
+MAX_NO_SPEECH = 0.6
+
+
+def transcribe_with_quality(audio):
+    """(text, mean avg_logprob, max no_speech_prob).
+
+    audio: a WAV path or a float32 numpy array at SAMPLE_RATE. Known app and
+    bookmark names bias the decoding (whisper hotwords). The two numbers let a
+    caller decline to act on a hearing whisper itself wasn't sure of."""
     global _model
     if _model is None:
         from faster_whisper import WhisperModel
@@ -125,7 +135,20 @@ def transcribe(audio) -> str:
     known = vocab.hotwords() or None
     segments, _ = _model.transcribe(audio, language="en", beam_size=1,
                                     hotwords=known)
-    return " ".join(segment.text.strip() for segment in segments).strip()
+    found = list(segments)
+    text = " ".join(segment.text.strip() for segment in found).strip()
+    if not found:
+        return text, 0.0, 1.0
+    mean_logprob = sum(s.avg_logprob for s in found) / len(found)
+    return text, mean_logprob, max(s.no_speech_prob for s in found)
+
+
+def transcribe(audio) -> str:
+    return transcribe_with_quality(audio)[0]
+
+
+def is_confident(mean_logprob: float, no_speech: float) -> bool:
+    return mean_logprob >= CONFIDENT_LOGPROB and no_speech <= MAX_NO_SPEECH
 
 
 def record(seconds: float = RECORD_SECONDS):
