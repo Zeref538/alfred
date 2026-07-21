@@ -23,7 +23,10 @@ BOOKMARKS = {
 
 @pytest.fixture
 def vocab_file(tmp_path, monkeypatch):
+    # isolate BOTH files — the real ~/.alfred/shortcuts.yaml must never leak
+    # into a test and change what site_lookup resolves to
     monkeypatch.setattr(vocab, "VOCAB_FILE", tmp_path / "vocabulary.yaml")
+    monkeypatch.setattr(vocab, "SHORTCUTS_FILE", tmp_path / "shortcuts.yaml")
     return tmp_path
 
 

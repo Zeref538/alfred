@@ -330,7 +330,8 @@ def play_lookup(utterance: str) -> str | None:
 
 # Words that describe where a thing is, not which thing it is.
 _SITE_FILLER = re.compile(
-    r"\b(my|the|a|an|up|tab|tabs|page|pages|site|website|window|link|please)\b")
+    r"\b(my|the|a|an|up|and|open|tab|tabs|page|pages|site|website|window|link|"
+    r"account|profile|dashboard|overview|home|homepage|please)\b")
 
 
 def load_shortcuts() -> dict[str, str]:
