@@ -225,3 +225,14 @@ def test_private_paths_are_never_learned():
         assert vocab._PRIVATE_PATH.search(path), path
     for ordinary in ("/daily", "/puzzles/rush", "/ph/home", "/models"):
         assert not vocab._PRIVATE_PATH.search(ordinary), ordinary
+
+
+def test_app_usage_keeps_names_not_paths():
+    # where a program lives says a great deal about a person; Alfred keeps the
+    # name and drops the rest
+    used = vocab.app_usage()
+    assert isinstance(used, dict)
+    for name, runs in used.items():
+        assert "\\" not in name and "/" not in name, name
+        assert not name.endswith(".exe") and name == name.lower(), name
+        assert isinstance(runs, int)
