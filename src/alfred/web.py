@@ -97,6 +97,8 @@ class Session:
         self._recorder = None     # hold-to-talk recorder, when a key is held
         self._hold_timer = None
         self.global_keys = False  # set when the global chord is armed
+        from . import tabs
+        tabs.set_emitter(self.emit)  # the extension hears switches on the SSE
         self._turn = threading.Lock()  # one command at a time — no overlapping turns
         self._on_idle = None      # called when the last window closes (self-dismiss)
         self._ever_connected = False
@@ -665,6 +667,16 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                                  args=(str(body.get("name", "")),), daemon=True).start()
             elif route == "/api/motion":
                 session.motion(bool(body.get("enable")))
+            elif route == "/api/tabs":
+                # the extension's report. Only a title and a host survive this
+                # call; paths and queries are discarded inside update().
+                from . import tabs
+                kept = tabs.VIEW.update(body.get("tabs") or [])
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "kept": kept}).encode())
+                return
             elif route == "/api/gestures":
                 threading.Thread(target=session.gestures,
                                  args=(bool(body.get("enable")),), daemon=True).start()

@@ -40,6 +40,8 @@ _SPECS = [
                "Run a web search in the browser"),
     ActionSpec("focus_app", Tier.AT_LIBERTY, False, schemas.FocusApp,
                "Bring a window to the front by title"),
+    ActionSpec("focus_tab", Tier.AT_LIBERTY, False, schemas.FocusTab,
+               "Switch to a browser tab that is already open"),
     ActionSpec("launch_app", Tier.ANNOUNCED, False, schemas.LaunchApp,
                "Start an allowlisted application"),
     ActionSpec("media_control", Tier.ANNOUNCED, False, schemas.MediaControl,
