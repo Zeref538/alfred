@@ -50,6 +50,12 @@ class FocusApp(Args):
     title: str = Field(min_length=1, max_length=64)
 
 
+class FocusTab(Args):
+    """The spoken name of a tab. Never a URL: Alfred switches to a tab that is
+    already open, he does not navigate one anywhere."""
+    name: str = Field(min_length=1, max_length=80)
+
+
 class LaunchApp(Args):
     app: str
 

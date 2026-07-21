@@ -89,6 +89,14 @@ def _resolve_utterance(utterance: str, ledger: Ledger) -> str:
     if plan is not None:
         ledger.record(event="plan", source="customs", utterance=utterance)
         return plan
+    # an already-open tab beats opening a second copy of the same page.
+    # Deliberately deterministic and local: no tab title ever reaches the model.
+    from . import tabs
+    wanted_tab = tabs.spoken_tab_name(utterance)
+    if wanted_tab and tabs.VIEW.match(wanted_tab) is not None:
+        ledger.record(event="plan", source="tab", utterance=utterance)
+        return json.dumps({"plan": [{"action": "focus_tab",
+                                     "args": {"name": wanted_tab}}]})
     from . import vocab
     # a spoken domain is unambiguous — never let the model search around it
     url = vocab.url_lookup(utterance)
