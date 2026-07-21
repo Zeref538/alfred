@@ -429,6 +429,40 @@ class Session:
             self.emit(type="state", state="idle")
             self._turn.release()
 
+    def stand_everything_down(self, source: str = "spoken") -> None:
+        """Put down everything Alfred is doing, at once.
+
+        The bell stops the running plan; this stops the plan AND the
+        conversation, the microphone, the camera and the motion watch — every
+        thing of his that is still open. It deliberately does not touch the
+        master's own programs: closing those was ruled off the menu, and a word
+        that sounds sweeping is no reason to widen what he may do.
+        """
+        self.executor.abort.set()
+        self.end_conversation()
+        self._conversing = False
+        recorder, self._recorder = self._recorder, None
+        if self._hold_timer is not None:
+            self._hold_timer.cancel()
+            self._hold_timer = None
+        if recorder is not None:
+            try:
+                recorder.stop()
+            except Exception:
+                pass
+        for name, watch in (("camera", self._gestures), ("motion", self._motion)):
+            if watch is not None:
+                try:
+                    watch.stop()
+                except Exception:
+                    pass
+        self._gestures = self._motion = None
+        self.ledger.record(event="shutdown", source=source)
+        self.emit(type="state", state="idle")
+        self.say("Everything of mine is put down, sir — your own programs are "
+                 "untouched.")
+        self.executor.abort.clear()
+
     def conversing(self) -> bool:
         return self._conversing
 
@@ -494,6 +528,11 @@ class Session:
             self._speak(voice.stand_down())
             fieldlog.record(outcome="bell", raw=raw, corrected=transcript)
             return True          # the bell closes the conversation too
+        if voice.is_shutdown(transcript):
+            self.stand_everything_down()
+            self._speak(voice.stand_down())
+            fieldlog.record(outcome="shutdown", raw=raw, corrected=transcript)
+            return True
         if voice.is_thanks(transcript):
             self.say("Very good, sir.")
             self._speak(voice.nod())
@@ -994,7 +1033,8 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                 target = session.hold_start if body.get("on") else session.hold_stop
                 threading.Thread(target=target, daemon=True).start()
             elif route == "/api/bell":
-                session.ring_bell("page")
+                threading.Thread(target=session.stand_everything_down,
+                                 args=("button",), daemon=True).start()
             elif route == "/api/gate":
                 session.answer_gate(str(body.get("id", "")), bool(body.get("go")),
                                     str(body.get("phrase", "")))
