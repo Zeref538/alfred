@@ -69,6 +69,39 @@ def bridge_token() -> str:
 # Listing them was a losing game, so the opening word is simply compared to
 # "alfred" and taken as address if it is close enough. "alfredo" is spared on
 # purpose: that is a pasta, not a butler.
+# Actions whose argument is built FROM the words spoken. If one of these ends
+# up carrying almost none of what was said, the plan is a guess dressed as an
+# answer — "playlofi beats on youtube" resolving to plain youtube.com. Actions
+# with enum or boolean arguments are exempt: "silence the notifications" quite
+# properly echoes none of its words back.
+_ECHOING_ACTIONS = {"open_url", "web_search", "play_media", "focus_tab",
+                    "focus_app", "launch_app"}
+COVERAGE_THRESHOLD = 0.5
+_COVERAGE_SKIP = frozenset("""
+    open play go to the a an my on in at and or please up me show take switch
+    bring find tab tabs page site window link account profile set turn get some
+    any song songs music video videos for with from is it that this then also
+    new now can you would could shall
+""".split())
+
+
+def _content_words(text: str) -> list[str]:
+    words = re.sub(r"[^a-z0-9 ]", " ", text.lower()).split()
+    return [w for w in words if len(w) > 2 and w not in _COVERAGE_SKIP]
+
+
+def plan_covers(utterance: str, steps) -> bool:
+    """Does the plan actually account for what was asked?"""
+    if not steps or any(s.spec.name not in _ECHOING_ACTIONS for s in steps):
+        return True
+    said = _content_words(utterance)
+    if not said:
+        return True
+    blob = re.sub(r"[^a-z0-9]", " ", " ".join(
+        str(v) for s in steps for v in s.args.model_dump().values()).lower())
+    return sum(1 for w in said if w in blob) / len(said) >= COVERAGE_THRESHOLD
+
+
 _WAKE = re.compile(r"^\s*(?:hey\s+|ok\s+|okay\s+)?([a-z]+)\b[\s,:.]*", re.I)
 _WAKE_SIMILARITY = 0.55
 
@@ -419,6 +452,14 @@ class Session:
         fieldlog.record(outcome="plan", raw=raw, corrected=transcript,
                         detail="; ".join(describe(s) for s in self._pending_steps))
         tier = plan_tier(self._pending_steps)
+        # A plan can be confidently wrong rather than uncertain: whisper was
+        # sure, the planner answered, and the answer ignores half the order.
+        # Tiers 2 and 3 already ask, so this only guards the silent ones.
+        if tier <= Tier.ANNOUNCED and not plan_covers(transcript, self._pending_steps):
+            fieldlog.record(outcome="loose", raw=raw, corrected=transcript,
+                            detail="; ".join(describe(s) for s in self._pending_steps))
+            if not self._confirm_loose_plan(transcript):
+                return
         try:
             if tier <= Tier.ANNOUNCED:  # nothing consequential — just do it
                 self.emit(type="state", state="working")
@@ -449,6 +490,22 @@ class Session:
         finally:
             self._pending_steps = None
             self.emit(type="state", state="idle")
+
+    def _confirm_loose_plan(self, transcript: str) -> bool:
+        """He heard you clearly and found something to do — but it doesn't
+        answer what you asked. Say so, and wait to be told to go on."""
+        from . import voice
+        self.say("That doesn't quite answer what you asked, sir — shall I anyway?")
+        self._speak("That doesn't quite answer what you asked, sir. Shall I anyway?")
+        self.emit(type="state", state="listening")
+        try:
+            confirmed = voice.heard_confirmation()
+        finally:
+            self.emit(type="state", state="idle")
+        if not confirmed:
+            self.say("Very well, sir — try me again.")
+            self._speak(voice.stand_down())
+        return confirmed
 
     def _confirm_doubtful_hearing(self, raw: str, transcript: str,
                                   logprob: float, no_speech: float) -> bool:
