@@ -144,15 +144,13 @@ def _terms() -> list[str]:
     return _speakable_terms()
 
 
-def correct(utterance: str) -> str:
-    """Deterministic mishear repair: sliding word-windows fuzzy-matched
-    against the household vocabulary ('spot if i' → 'spotify'). No model,
-    no surprises — only known names are ever substituted."""
+MAX_REPAIRS = 3
+
+
+def _one_repair(text: str, terms: list[str]) -> str | None:
     from difflib import SequenceMatcher
-    words = utterance.split()
-    terms = _terms()
-    if not terms:
-        return utterance
+    words = text.split()
+    whole = re.sub(r"[^a-z0-9 ]", "", text.lower())
     for size in (1, 2, 3):  # smallest windows first, so command words survive
         for start in range(len(words) - size + 1):
             window = " ".join(words[start:start + size])
@@ -161,11 +159,39 @@ def correct(utterance: str) -> str:
             if len(squashed) < 4:
                 continue
             for term in terms:
+                if term in whole:
+                    continue  # already said — never insert it a second time
                 score = max(SequenceMatcher(None, cleaned, term).ratio(),
                             SequenceMatcher(None, squashed, term.replace(" ", "")).ratio())
-                if score >= 0.82 and term not in cleaned:
-                    return correct(" ".join(words[:start] + [term] + words[start + size:]))
-    return utterance
+                if score >= 0.82:
+                    return " ".join(words[:start] + [term] + words[start + size:])
+    return None
+
+
+def correct(utterance: str) -> str:
+    """Deterministic mishear repair: sliding word-windows fuzzy-matched against
+    the household vocabulary ('spot if i' -> 'spotify'). Only known names are
+    ever substituted.
+
+    This ran away once, spectacularly. The old guard asked whether the term was
+    in the *window*, so with a shortcut named "go trade", the word "trade"
+    fuzzy-matched it, became "go go trade", matched again, and recursed into
+    "open go go go go ..." forever. Three defences now: a term already present
+    anywhere in the sentence is never re-inserted, repairs are capped, and a
+    repair may never balloon the sentence.
+    """
+    terms = _terms()
+    if not terms:
+        return utterance
+    text, original = utterance, len(utterance.split())
+    for _ in range(MAX_REPAIRS):
+        repaired = _one_repair(text, terms)
+        if repaired is None or repaired == text:
+            break
+        if len(repaired.split()) > original + 1:
+            break
+        text = repaired
+    return text
 
 
 _OPEN_VERBS = re.compile(r"^(?:open|go to|visit|show me|take me to)\s+(?:the\s+)?(.+)$")
@@ -185,6 +211,14 @@ _COMMON_SITES = {
     "wikipedia": "https://wikipedia.org", "stackoverflow": "https://stackoverflow.com",
     "stack overflow": "https://stackoverflow.com", "chatgpt": "https://chatgpt.com",
     "discord": "https://discord.com/app", "whatsapp": "https://web.whatsapp.com",
+    # streaming — named constantly, and worth knowing without being taught
+    "disney plus": "https://www.disneyplus.com", "disneyplus": "https://www.disneyplus.com",
+    "disney": "https://www.disneyplus.com", "hbo max": "https://www.max.com",
+    "max": "https://www.max.com", "crunchyroll": "https://www.crunchyroll.com",
+    "prime video": "https://www.primevideo.com", "primevideo": "https://www.primevideo.com",
+    "hulu": "https://www.hulu.com", "soundcloud": "https://soundcloud.com",
+    "apple music": "https://music.apple.com", "tiktok": "https://www.tiktok.com",
+    "chess": "https://www.chess.com", "pinterest": "https://www.pinterest.com",
 }
 
 
@@ -243,13 +277,30 @@ def url_lookup(utterance: str) -> str | None:
 
 
 _PLAY = re.compile(r"\bplay\b(.+)")
+# Longest names first, so "disney plus" wins before "disney". Each lands on the
+# service's OWN search, which is what "play X on Y" actually means — a web
+# search for the title is not the same thing at all.
 _PLAY_SERVICES = {
+    "disney plus": "https://www.disneyplus.com/search?q={}",
+    "prime video": "https://www.primevideo.com/search/?phrase={}",
+    "apple music": "https://music.apple.com/search?term={}",
+    "crunchyroll": "https://www.crunchyroll.com/search?q={}",
+    "soundcloud": "https://soundcloud.com/search?q={}",
+    "disneyplus": "https://www.disneyplus.com/search?q={}",
+    "primevideo": "https://www.primevideo.com/search/?phrase={}",
+    "netflix": "https://www.netflix.com/search?q={}",
     "spotify": "https://open.spotify.com/search/{}",
     "youtube": "https://www.youtube.com/results?search_query={}",
+    "twitch": "https://www.twitch.tv/search?term={}",
+    "disney": "https://www.disneyplus.com/search?q={}",
+    "hulu": "https://www.hulu.com/search?q={}",
+    "max": "https://www.max.com/search?q={}",
 }
+# "the", "in" and "on" stay: titles are full of them ("Malcolm in the Middle",
+# "Attack on Titan"). Only the "on <service>" tail is stripped, and separately.
 _PLAY_FILLER = re.compile(
-    r"\b(a|an|the|some|any|me|for|song|songs|music|track|tracks|video|videos|"
-    r"playlist|on|in|with|using|please)\b")
+    r"\b(a|an|some|any|song|songs|music|track|tracks|video|videos|episode|"
+    r"show|movie|playlist|please)\b")
 
 
 def play_lookup(utterance: str) -> str | None:
@@ -265,8 +316,10 @@ def play_lookup(utterance: str) -> str | None:
     match = _PLAY.search(said)
     if not match:
         return None
-    subject = _PLAY_FILLER.sub(" ", match.group(1))
-    subject = re.sub(rf"\b{service}\b", " ", subject)
+    # cut the "... on <service>" tail first, so an "on" inside a title survives
+    subject = re.sub(rf"\b(?:on|in|at|with|using)?\s*{re.escape(service)}\b.*$",
+                     " ", match.group(1))
+    subject = _PLAY_FILLER.sub(" ", subject)
     subject = re.sub(r"[^a-z0-9 ]", " ", subject)
     subject = re.sub(r"\s+", " ", subject).strip()
     if not subject:

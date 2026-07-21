@@ -95,13 +95,16 @@ def test_spoken_url_only_for_hosts_we_know(tmp_path, monkeypatch):
     assert vocab.url_lookup("go to github dot com") == "https://github.com"
     assert vocab.url_lookup("set the volume to twenty") is None
     # THE LIVE FAILURE: whisper heard "chess" as "chest" and we opened
-    # https://chest.com — a squatter's page. An unknown host must never be
-    # fabricated from speech; it falls through to a search instead.
-    assert vocab.url_lookup("open chest.com daily puzzles") is None
-    # once the master vouches for it, the same mishearing lands correctly
-    vocab.remember("chess", "https://www.chess.com/daily")
+    # https://chest.com — a squatter's page. A host we cannot vouch for must
+    # never be fabricated from speech; it falls through to a search instead.
+    assert vocab.url_lookup("open zorblatt-widgets.com now") is None
+    # chess.com is in the well-known table, so the mishearing lands correctly
+    # without the master having to teach it
     assert vocab.url_lookup("open chest.com daily puzzles") == \
-        "https://www.chess.com/daily"
+        "https://www.chess.com"
+    # his own entry, path and all, outranks the built-in one
+    vocab.remember("chess", "https://www.chess.com/daily")
+    assert vocab.url_lookup("open chest.com") == "https://www.chess.com/daily"
     assert vocab.url_lookup("open chess.com slash daily puzzles") == \
         "https://chess.com/daily-puzzles"
 
@@ -117,6 +120,29 @@ def test_shortcuts_beat_everything_and_ignore_filler(tmp_path, monkeypatch):
     # a shortcut also outranks the built-in table
     vocab.remember("youtube", "https://my.private.tube")
     assert vocab.site_lookup("open my youtube tab") == "https://my.private.tube"
+
+
+def test_correct_never_runs_away(tmp_path, monkeypatch):
+    # THE LIVE FAILURE: with a shortcut "go trade", the word "trade" fuzzy-matched
+    # it, became "go go trade", matched again, and recursed into
+    # "open go go go go go ..." hundreds of words long.
+    monkeypatch.setattr(vocab, "SHORTCUTS_FILE", tmp_path / "shortcuts.yaml")
+    monkeypatch.setattr(vocab, "VOCAB_FILE", tmp_path / "vocabulary.yaml")
+    vocab.remember("go trade", "https://ultra.heygotrade.com/portfolio")
+    out = vocab.correct("open go trade tab")
+    assert out.split().count("go") == 1
+    assert len(out.split()) <= len("open go trade tab".split()) + 1
+
+
+def test_play_keeps_prepositions_inside_titles():
+    # stripping every "on" turned "attack on titan" into "attack titan"
+    assert vocab.play_lookup("play attack on titan on crunchyroll") == \
+        "https://www.crunchyroll.com/search?q=attack%20on%20titan"
+    assert vocab.play_lookup("play malcolm in the middle on disney plus") == \
+        "https://www.disneyplus.com/search?q=malcolm%20in%20the%20middle"
+    # and the service's OWN search, not a web search for the title
+    assert vocab.play_lookup("play stranger things on netflix") == \
+        "https://www.netflix.com/search?q=stranger%20things"
 
 
 def test_shortcuts_reject_non_http(tmp_path, monkeypatch):
