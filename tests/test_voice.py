@@ -149,3 +149,36 @@ def test_thanks_closes_the_conversation(heard):
 def test_ordinary_speech_keeps_it_open(heard):
     from alfred.voice import is_thanks
     assert not is_thanks(heard)
+
+
+@pytest.mark.parametrize("heard", [
+    "shutdown", "shut down", "stand down", "close everything", "alfred shutdown"])
+def test_shutdown_word_is_caught(heard):
+    from alfred.voice import is_shutdown
+    assert is_shutdown(heard)
+
+
+@pytest.mark.parametrize("heard", [
+    "search how to shut down windows properly", "open the shutdown script folder",
+    "", "play shutdown by the band"])
+def test_ordinary_speech_is_not_a_shutdown(heard):
+    from alfred.voice import is_shutdown
+    assert not is_shutdown(heard)
+
+
+def test_standing_down_stops_his_work_not_yours(tmp_path):
+    # it closes ALFRED's things; the master's programs are never touched
+    from alfred.executor import Executor
+    from alfred.ledger import Ledger
+    from alfred.undo import UndoManager
+    from alfred.web import Session
+    session = Session(executor=Executor({}, Ledger(root=tmp_path), UndoManager()))
+    stopped = []
+    session._gestures = type("W", (), {"stop": lambda self: stopped.append("camera")})()
+    session._motion = type("W", (), {"stop": lambda self: stopped.append("motion")})()
+    session._conversing = True
+    session.stand_everything_down()
+    assert sorted(stopped) == ["camera", "motion"]
+    assert not session.conversing()
+    assert session._gestures is None and session._motion is None
+    assert any(e.get("event") == "shutdown" for e in session.ledger.today())
