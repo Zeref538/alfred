@@ -105,6 +105,27 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
  #viz i:nth-child(6){ animation-delay:.26s } #viz i:nth-child(7){ animation-delay:.06s }
  @keyframes bounce { 0%,100%{ height:5px } 50%{ height:22px } }
 
+ /* the first-run invitation — loud until he knows you, a quiet button after */
+ #attune { display:flex; align-items:center; gap:1rem; margin:0 0 .8rem;
+        padding:.75rem .9rem; border:1px solid var(--amber);
+        background:linear-gradient(90deg, rgba(255,176,46,.10), transparent 70%);
+        animation:beckon 2.8s ease-in-out infinite; }
+ #attune b { color:#ffd79f; letter-spacing:.06em; }
+ #attune span { display:block; color:var(--cy-dim); font-size:.7rem;
+        line-height:1.5; margin-top:.2rem; }
+ #attune button { border-color:var(--amber); color:var(--amber);
+        white-space:nowrap; margin-left:auto; }
+ #attune button:hover { background:rgba(255,176,46,.10);
+        box-shadow:0 0 14px rgba(255,176,46,.45); }
+ @keyframes beckon { 0%,100% { border-color:rgba(255,176,46,.35); }
+                     50% { border-color:rgba(255,176,46,.95); } }
+ /* once he knows you it stops shouting and becomes an ordinary control */
+ #attune.known { animation:none; border-color:rgba(57,215,255,.2);
+        background:none; padding:.35rem 0; }
+ #attune.known b, #attune.known span { display:none; }
+ #attune.known button { border-color:rgba(57,215,255,.45); color:var(--cy);
+        margin-left:0; font-size:.66rem; padding:.35rem .6rem; }
+
  /* the live subtitle — what Alfred is hearing, big enough to check at a glance */
  #subtitle { min-height:1.5rem; margin:.1rem 0 .7rem; text-align:center;
         font-size:1.05rem; letter-spacing:.03em; color:#dff6ff;
@@ -156,6 +177,14 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
   </div>
   <div id="viz" style="margin-left:auto"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
  </header>
+ <div id="attune" class="__ATTUNE_STATE__">
+  <div>
+   <b>Make Alfred yours.</b>
+   <span>He'll learn your software and the places you actually go — all of it
+   stays on this machine.</span>
+  </div>
+  <button id="attuneBtn">⟡ attune to me</button>
+ </div>
  <div id="subtitle"></div>
  <div id="log"></div><div id="gates"></div>
  <div id="bar">
@@ -264,6 +293,13 @@ document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>post("/api/comm
 document.getElementById("motion").onchange = (e)=>post("/api/motion",{enable:e.target.checked});
 document.getElementById("gestures").onchange = (e)=>post("/api/gestures",{enable:e.target.checked});
 document.getElementById("cog").onclick = ()=>{ location.href = "/settings?t="+TOKEN; };
+document.getElementById("attuneBtn").onclick = (e)=>{
+  e.target.disabled = true; e.target.textContent = "attuning…";
+  post("/api/attune").finally(()=>setTimeout(()=>{
+    e.target.disabled = false; e.target.textContent = "⟡ re-attune";
+    document.getElementById("attune").classList.add("known");
+  }, 1500));
+};
 </script></body></html>"""
 
 

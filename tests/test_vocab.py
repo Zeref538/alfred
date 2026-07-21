@@ -113,13 +113,13 @@ def test_spoken_url_only_for_hosts_we_know(tmp_path, monkeypatch):
 
 
 def test_shortcuts_beat_everything_and_ignore_filler(tmp_path, monkeypatch):
-    # the live failure: "my go trade tab" is an open TAB, never a bookmark
+    # the live failure: "my go ledger tab" is an open TAB, never a bookmark
     monkeypatch.setattr(vocab, "SHORTCUTS_FILE", tmp_path / "shortcuts.yaml")
     monkeypatch.setattr(vocab, "VOCAB_FILE", tmp_path / "vocabulary.yaml")
-    vocab.remember("go trade", "https://ultra.heygotrade.com/portfolio")
-    for said in ("open my go trade investment tab", "open my go trade tab",
-                 "open go trade"):
-        assert vocab.site_lookup(said) == "https://ultra.heygotrade.com/portfolio"
+    vocab.remember("go ledger", "https://ledger.example.com/portfolio")
+    for said in ("open my go ledger investment tab", "open my go ledger tab",
+                 "open go ledger"):
+        assert vocab.site_lookup(said) == "https://ledger.example.com/portfolio"
     # a shortcut also outranks the built-in table
     vocab.remember("youtube", "https://my.private.tube")
     assert vocab.site_lookup("open my youtube tab") == "https://my.private.tube"
@@ -148,15 +148,15 @@ def test_hearing_targets_become_hotwords(tmp_path, monkeypatch):
 
 
 def test_correct_never_runs_away(tmp_path, monkeypatch):
-    # THE LIVE FAILURE: with a shortcut "go trade", the word "trade" fuzzy-matched
-    # it, became "go go trade", matched again, and recursed into
+    # THE LIVE FAILURE: with a shortcut "go ledger", the word "trade" fuzzy-matched
+    # it, became "go go ledger", matched again, and recursed into
     # "open go go go go go ..." hundreds of words long.
     monkeypatch.setattr(vocab, "SHORTCUTS_FILE", tmp_path / "shortcuts.yaml")
     monkeypatch.setattr(vocab, "VOCAB_FILE", tmp_path / "vocabulary.yaml")
-    vocab.remember("go trade", "https://ultra.heygotrade.com/portfolio")
-    out = vocab.correct("open go trade tab")
+    vocab.remember("go ledger", "https://ledger.example.com/portfolio")
+    out = vocab.correct("open go ledger tab")
     assert out.split().count("go") == 1
-    assert len(out.split()) <= len("open go trade tab".split()) + 1
+    assert len(out.split()) <= len("open go ledger tab".split()) + 1
 
 
 def test_play_keeps_prepositions_inside_titles():
@@ -208,7 +208,7 @@ def test_hotwords_are_capped_cleaned_and_deduped(vocab_file, monkeypatch):
 def test_history_names_a_page_by_where_it_is():
     assert vocab._name_from_location("chess.com", "/daily") == "chess daily"
     assert vocab._name_from_location("www.chess.com", "/puzzles/rush") == "chess puzzles rush"
-    assert vocab._name_from_location("app.roboflow.com", "/w/acra/annotate").startswith("roboflow")
+    assert vocab._name_from_location("files.example.com", "/w/team/annotate").startswith("files")
 
 
 def test_history_names_a_page_by_its_title():

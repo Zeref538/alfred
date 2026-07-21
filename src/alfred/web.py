@@ -657,6 +657,46 @@ class Session:
             self._gestures = None
             self.say("The camera is closed, sir.")
 
+    def attuned(self) -> bool:
+        """Has this machine's owner been learned yet?"""
+        from . import config, vocab
+        return config.APPS_FILE.exists() or vocab.VOCAB_FILE.exists()
+
+    def attune(self) -> None:
+        """Learn this particular person: their software, their bookmarks, the
+        pages they actually live in. Everything stays on the machine — this
+        reads local files and writes to ~/.alfred, and speaks to nothing."""
+        import yaml
+
+        from . import config, vocab
+        from .adapters.apps import scan_start_menu
+        if not self._try_begin():
+            return
+        try:
+            self.emit(type="state", state="working")
+            self.say("Attuning to you, sir — this stays on the machine.")
+
+            self.say("  · taking stock of your software…")
+            apps = scan_start_menu()
+            config.APPS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            config.APPS_FILE.write_text(yaml.safe_dump(apps, sort_keys=True),
+                                        encoding="utf-8")
+            self.say(f"    {len(apps)} applications registered.")
+
+            self.say("  · reading your bookmarks and the pages you visit most…")
+            learned = vocab.build_vocabulary()
+            sites = len(learned.get("sites", {}))
+            self.say(f"    {sites} places you go, named as you'd say them.")
+
+            self.emit(type="state", state="idle")
+            self.say("Attuned, sir. Try “open” followed by somewhere you go often.")
+            self._speak("Attuned, sir. I know your way around now.")
+        except Exception as error:
+            self.say(f"My apologies, sir — {type(error).__name__}: {error}")
+        finally:
+            self.emit(type="state", state="idle")
+            self._turn.release()
+
     def motion(self, enable: bool) -> None:
         if enable and self._motion is None:
             try:
@@ -731,7 +771,9 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                         .replace("__HOLD_KEYS__", json.dumps(keys))
                         .replace("__GLOBAL_KEYS__",
                                  "true" if session.global_keys else "false")
-                        .replace("__HOLD_LABEL__", "+".join(k.upper() for k in keys)))
+                        .replace("__HOLD_LABEL__", "+".join(k.upper() for k in keys))
+                        .replace("__ATTUNE_STATE__",
+                                 "known" if session.attuned() else ""))
                 self.wfile.write(page.encode("utf-8"))
             elif route == "/settings":
                 from .webpage import SETTINGS_PAGE
@@ -822,6 +864,8 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": True, "kept": kept}).encode())
                 return
+            elif route == "/api/attune":
+                threading.Thread(target=session.attune, daemon=True).start()
             elif route == "/api/gestures":
                 threading.Thread(target=session.gestures,
                                  args=(bool(body.get("enable")),), daemon=True).start()
