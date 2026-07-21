@@ -25,7 +25,7 @@ import yaml
 from . import config
 
 VOCAB_FILE = config.DATA_DIR / "vocabulary.yaml"
-MAX_HOTWORDS = 100
+MAX_HOTWORDS = 40  # a short, speakable list; a long one hallucinates itself back
 
 _CHROMIUM_BOOKMARK_FILES = [
     r"Google\Chrome\User Data\Default\Bookmarks",
@@ -98,26 +98,47 @@ def load() -> dict:
     return parsed
 
 
-def hotwords() -> str:
-    """A biasing string for whisper: app names + bookmark names, capped."""
-    terms = list(config.ALLOWED_APPS) + list(load().get("sites", {}))
-    seen: list[str] = []
+# Words that betray a Start Menu entry nobody says out loud. Feeding these to
+# whisper as hotwords is actively harmful: on silence or noise it hallucinates
+# them back ("4 64 bit, idle python 3 14, imagemagick web"), so they are cut.
+_NOISE_WORDS = frozenset(
+    "documentation manual manuals docs tools tool verifier prompt uninstall "
+    "readme sdk cmd gui cli x64 x86 wow bit edition release notes reference "
+    "localization diagnostics initiator configuration management legacy "
+    "preview installer kit samples sample".split())
+
+
+def speakable(term: str) -> str | None:
+    """A name a human would actually say, or None. Digits, version numbers and
+    long technical strings are rejected — they poison the decoder."""
+    cleaned = re.sub(r"[^a-z ]", " ", term.lower())  # digits out entirely
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    words = cleaned.split()
+    if not 1 <= len(words) <= 2:
+        return None
+    if any(len(w) < 2 for w in words) or any(w in _NOISE_WORDS for w in words):
+        return None
+    return cleaned if 3 <= len(cleaned) <= 20 else None
+
+
+def _speakable_terms() -> list[str]:
+    """Bookmarked site names first — those are what the master actually says."""
+    terms, seen = list(load().get("sites", {})) + list(config.ALLOWED_APPS), []
     for term in terms:
-        cleaned = re.sub(r"[^a-z0-9 ]", " ", term.lower()).strip()
-        if cleaned and cleaned not in seen:
-            seen.append(cleaned)
-        if len(seen) >= MAX_HOTWORDS:
-            break
-    return ", ".join(seen)
+        name = speakable(term)
+        if name and name not in seen:
+            seen.append(name)
+    return seen
+
+
+def hotwords() -> str:
+    """A biasing string for whisper — curated and capped. A short list of names
+    the master really says beats a long list of everything installed."""
+    return ", ".join(_speakable_terms()[:MAX_HOTWORDS])
 
 
 def _terms() -> list[str]:
-    cleaned = []
-    for term in list(config.ALLOWED_APPS) + list(load().get("sites", {})):
-        term = re.sub(r"[^a-z0-9 ]", " ", term.lower()).strip()
-        if 3 <= len(term) <= 30:
-            cleaned.append(term)
-    return cleaned
+    return _speakable_terms()
 
 
 def correct(utterance: str) -> str:

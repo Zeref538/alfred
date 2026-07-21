@@ -274,7 +274,7 @@ class Session:
         — nothing for read-only/reversible, a spoken yes for the consequential,
         the typed seal (on the panel) for anything that reaches your files."""
         from . import fieldlog, voice
-        raw = voice.transcribe(audio)
+        raw, logprob, no_speech = voice.transcribe_with_quality(audio)
         self.emit(type="subtitle", text=raw)  # what he heard, big on the panel
         self.say(f'Heard: "{raw}"')
         if not raw:
@@ -290,6 +290,10 @@ class Session:
             self._speak(voice.stand_down())
             fieldlog.record(outcome="bell", raw=raw, corrected=transcript)
             return
+        # the bell always works; everything past here needs a hearing we trust
+        if not voice.is_confident(logprob, no_speech):
+            if not self._confirm_doubtful_hearing(raw, transcript, logprob, no_speech):
+                return
         if voice.is_undo(transcript):
             self._undo_spoken()
             fieldlog.record(outcome="undo", raw=raw, corrected=transcript)
@@ -357,6 +361,27 @@ class Session:
         finally:
             self._pending_steps = None
             self.emit(type="state", state="idle")
+
+    def _confirm_doubtful_hearing(self, raw: str, transcript: str,
+                                  logprob: float, no_speech: float) -> bool:
+        """Whisper wasn't sure it heard words at all — the case that produced
+        "4 64 bit, idle python 3 14". Read it back and go no further without a
+        spoken yes. Returns True to continue, False to drop the turn."""
+        from . import fieldlog, voice
+        self.say(f'I\'m not confident I caught that, sir — did you say "{transcript}"?')
+        self._speak(f"I'm not confident, sir. Did you say: {transcript}?")
+        self.emit(type="state", state="listening")
+        try:
+            confirmed = voice.heard_confirmation()
+        finally:
+            self.emit(type="state", state="idle")
+        if confirmed:
+            return True
+        self.say("Very well, sir — I'll forget that one.")
+        self._speak(voice.stand_down())
+        fieldlog.record(outcome="unsure", raw=raw, corrected=transcript,
+                        detail=f"logprob={logprob:.2f} no_speech={no_speech:.2f}")
+        return False
 
     def _offer_search_fallback(self, raw: str, transcript: str) -> None:
         """When a spoken command makes no sense on the menu, don't just refuse
