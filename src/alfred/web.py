@@ -486,6 +486,23 @@ class Session:
         elif name == "burn":
             self.ledger.burn_today()
             self.say("The day's page is ash, sir.")
+        elif name == "tabs":
+            # everything he knows about your browser, in full — the counterpart
+            # to the privacy rules: you can always audit what he can see
+            from . import tabs
+            seen = tabs.VIEW.all()
+            if not seen:
+                self.say("I can't see any tabs, sir — the browser extension "
+                         "isn't connected, is paused, or has gone quiet.")
+            else:
+                self.say(f"{len(seen)} tab(s) visible to me, sir "
+                         "(title and host only — no paths, nothing stored):")
+                for tab in seen:
+                    self.say(f"  - {tab.title[:60]} @ {tab.host}")
+        elif name == "forgettabs":
+            from . import tabs
+            tabs.VIEW.forget()
+            self.say("Forgotten, sir — I can see no tabs at all now.")
         elif name == "fieldlog":
             from . import fieldlog
             for line in fieldlog.summary().splitlines():
