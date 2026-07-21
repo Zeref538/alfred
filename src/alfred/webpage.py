@@ -259,7 +259,6 @@ document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>post("/api/comm
 document.getElementById("motion").onchange = (e)=>post("/api/motion",{enable:e.target.checked});
 document.getElementById("gestures").onchange = (e)=>post("/api/gestures",{enable:e.target.checked});
 document.getElementById("cog").onclick = ()=>{ location.href = "/settings?t="+TOKEN; };
-say("Good day, sir. All systems at your disposal.");
 </script></body></html>"""
 
 
