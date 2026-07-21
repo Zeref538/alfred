@@ -50,6 +50,19 @@ class FocusApp(Args):
     title: str = Field(min_length=1, max_length=64)
 
 
+class PlayMedia(Args):
+    """A media page to open and set playing. http(s) only, as ever."""
+    url: str = Field(min_length=1, max_length=2048)
+
+    @field_validator("url")
+    @classmethod
+    def http_only(cls, v: str) -> str:
+        parts = urlsplit(v)
+        if parts.scheme not in ("http", "https") or not parts.netloc:
+            raise ValueError("only http(s) URLs with a host are served")
+        return v
+
+
 class FocusTab(Args):
     """The spoken name of a tab. Never a URL: Alfred switches to a tab that is
     already open, he does not navigate one anywhere."""

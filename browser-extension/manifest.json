@@ -3,8 +3,21 @@
   "name": "Alfred — tab bridge",
   "version": "1.0.0",
   "description": "Lets Alfred see which tabs are open and switch between them. Reports titles and hostnames only, to 127.0.0.1, and only while you have it connected.",
-  "permissions": ["tabs", "storage", "alarms"],
-  "host_permissions": ["http://127.0.0.1/*"],
+  "permissions": ["tabs", "storage", "alarms", "scripting"],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "https://*.youtube.com/*",
+    "https://open.spotify.com/*",
+    "https://*.netflix.com/*",
+    "https://*.disneyplus.com/*",
+    "https://*.crunchyroll.com/*",
+    "https://soundcloud.com/*",
+    "https://*.twitch.tv/*",
+    "https://*.max.com/*",
+    "https://*.hulu.com/*",
+    "https://music.apple.com/*",
+    "https://*.primevideo.com/*"
+  ],
   "background": { "service_worker": "background.js" },
   "options_page": "options.html",
   "action": { "default_title": "Alfred tab bridge", "default_popup": "options.html" }

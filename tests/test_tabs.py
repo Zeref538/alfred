@@ -83,6 +83,34 @@ def test_spoken_tab_name_requires_the_word_tab():
     assert tabs.spoken_tab_name("volume 30") is None
 
 
+def test_play_media_degrades_to_opening_without_the_bridge(monkeypatch):
+    # no extension: he should still land you on the page, not fail outright
+    import alfred.adapters.browser as browser_mod
+    from alfred import schemas
+    opened = []
+    monkeypatch.setattr(browser_mod, "webbrowser",
+                        type("W", (), {"open": staticmethod(opened.append)}))
+    monkeypatch.setattr(tabs, "_emit", None)
+    browser_mod.play_media(schemas.PlayMedia(url="https://youtube.com/results?q=x"))
+    assert opened == ["https://youtube.com/results?q=x"]
+
+
+def test_play_media_asks_the_bridge_when_connected(monkeypatch):
+    from alfred import schemas
+    from alfred.adapters.browser import play_media
+    sent = []
+    monkeypatch.setattr(tabs, "_emit", lambda **e: sent.append(e))
+    play_media(schemas.PlayMedia(url="https://open.spotify.com/search/x"))
+    assert sent == [{"type": "play_request", "url": "https://open.spotify.com/search/x"}]
+
+
+def test_play_media_is_http_only():
+    import pytest as _pytest
+    from alfred import schemas
+    with _pytest.raises(Exception):
+        schemas.PlayMedia(url="javascript:alert(1)")
+
+
 def test_focus_tab_refuses_when_the_bridge_is_quiet():
     from alfred import schemas
     from alfred.adapters.browser import focus_tab

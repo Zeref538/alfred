@@ -15,6 +15,7 @@ def build_adapters() -> dict[str, Adapter]:
         "web_search": browser.web_search,
         "focus_app": apps.focus_app,
         "focus_tab": browser.focus_tab,
+        "play_media": browser.play_media,
         "launch_app": apps.launch_app,
         "media_control": media.media_control,
         "set_volume": media.set_volume,

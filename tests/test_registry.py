@@ -4,12 +4,15 @@ from alfred.registry import REGISTRY, Tier
 from alfred.validator import plan_tier, validate_plan
 
 
-def test_menu_is_frozen_at_thirteen_actions():
+def test_menu_is_frozen_at_fourteen_actions():
     # The count is asserted so the menu can never grow by accident — widening
     # Alfred's reach must be a deliberate edit here, with a reason.
-    # 12 -> 13: focus_tab, added with the browser bridge. It only switches to a
-    # tab already open; it cannot navigate, close, or read one.
-    assert len(REGISTRY) == 13
+    # 12 -> 13: focus_tab, with the browser bridge. It only switches to a tab
+    #           already open; it cannot navigate, close, or read one.
+    # 13 -> 14: play_media, so "play X on Y" actually plays rather than landing
+    #           on a search page. Opens a media page and presses play, nothing
+    #           else, and degrades to merely opening it without the extension.
+    assert len(REGISTRY) == 14
 
 
 def test_nothing_destructive_on_the_menu():

@@ -13,6 +13,17 @@ def web_search(args: schemas.WebSearch) -> None:
     webbrowser.open(settings.get("search") + quote_plus(args.query))
 
 
+def play_media(args: schemas.PlayMedia) -> None:
+    """Open a media page and set it going. The extension does the pressing —
+    Alfred has no hands in a page. Without the bridge this degrades to simply
+    opening the page, which is what he could always do."""
+    from .. import tabs
+    try:
+        tabs.request_play(args.url)
+    except RuntimeError:
+        webbrowser.open(args.url)
+
+
 def focus_tab(args: schemas.FocusTab) -> None:
     """Switch to an already-open tab. Alfred never reaches into the browser
     himself — he matches the spoken name against the last report locally, then

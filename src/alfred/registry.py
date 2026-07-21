@@ -46,6 +46,8 @@ _SPECS = [
                "Start an allowlisted application"),
     ActionSpec("media_control", Tier.ANNOUNCED, False, schemas.MediaControl,
                "Play, pause, or skip media"),
+    ActionSpec("play_media", Tier.ANNOUNCED, False, schemas.PlayMedia,
+               "Open a media page and start it playing"),
     ActionSpec("set_volume", Tier.ANNOUNCED, True, schemas.SetVolume,
                "Set the master volume (0-100)"),
     ActionSpec("toggle_do_not_disturb", Tier.ANNOUNCED, True, schemas.ToggleDnd,
