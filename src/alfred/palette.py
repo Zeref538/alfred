@@ -90,6 +90,11 @@ def _resolve_utterance(utterance: str, ledger: Ledger) -> str:
         ledger.record(event="plan", source="customs", utterance=utterance)
         return plan
     from . import vocab
+    # a spoken domain is unambiguous — never let the model search around it
+    url = vocab.url_lookup(utterance)
+    if url is not None:
+        ledger.record(event="plan", source="spoken-url", utterance=utterance)
+        return json.dumps({"plan": [{"action": "open_url", "args": {"url": url}}]})
     # "play X on spotify" is exact enough to resolve without the model guessing
     url = vocab.play_lookup(utterance)
     if url is not None:
@@ -285,6 +290,28 @@ def _dispatch(words: list[str], executor: Executor, undo: UndoManager,
             print(f"Apps on the menu ({len(config.ALLOWED_APPS)}):")
             for name in sorted(config.ALLOWED_APPS):
                 print("  " + name)
+    elif command == "remember":
+        # alfred remember go trade = https://ultra.heygotrade.com/portfolio
+        from . import vocab
+        phrase = " ".join(rest)
+        name, sep, url = phrase.partition("=")
+        if not sep or not name.strip() or not url.strip().startswith("http"):
+            print('Usage, sir: alfred remember <name> = <https://...>')
+        else:
+            vocab.remember(name, url)
+            print(f'Committed to memory, sir: "{name.strip().lower()}" -> {url.strip()}')
+            print('Say "open ' + name.strip().lower() + '" and I shall.')
+    elif command == "forget":
+        from . import vocab
+        name = " ".join(rest).strip().lower()
+        shortcuts = vocab.load_shortcuts()
+        if shortcuts.pop(name, None) is None:
+            print(f"I have no shortcut called '{name}', sir.")
+        else:
+            import yaml
+            vocab.SHORTCUTS_FILE.write_text(
+                yaml.safe_dump({"shortcuts": shortcuts}, sort_keys=True), encoding="utf-8")
+            print(f"Forgotten, sir: {name}")
     elif command == "gestures":
         from . import gestures
         if rest[:1] == ["setup"]:
