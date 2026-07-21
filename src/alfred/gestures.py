@@ -118,11 +118,32 @@ class Watch:
     a held hand doesn't machine-gun the butler.
     """
 
-    def __init__(self, on_gesture, camera: int = 0):
+    def __init__(self, on_gesture, camera: int = 0, preview: bool = True):
         self.on_gesture = on_gesture
         self.camera = camera
+        self.preview = preview  # show what the camera sees, so you can trust it
         self._stop = False
         self._thread = None
+
+    def _draw(self, frame, points, gesture):
+        """The preview window: landmarks, the reading, and a plain 'watching'
+        light — so it's obvious whether the camera actually sees you."""
+        import cv2
+        height, width = frame.shape[:2]
+        if points:
+            for x, y in points:
+                cv2.circle(frame, (int(x * width), int(y * height)), 4,
+                           (255, 200, 60), -1)
+            label, colour = (gesture or "hand — no known sign"), (60, 255, 160)
+        else:
+            label, colour = "no hand in view", (120, 120, 120)
+        cv2.rectangle(frame, (0, 0), (width, 38), (12, 8, 4), -1)
+        cv2.putText(frame, f"ALFRED  |  {label}", (12, 26),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.62, colour, 2)
+        cv2.putText(frame, "Esc closes the preview", (12, height - 12),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (140, 140, 140), 1)
+        cv2.imshow("Alfred - gesture preview", frame)
+        return (cv2.waitKey(1) & 0xFF) != 27  # False once Esc is pressed
 
     def _loop(self) -> None:
         import cv2
@@ -141,15 +162,19 @@ class Watch:
                     ok, frame = capture.read()
                     if not ok:
                         break
-                    if resting > 0:
-                        resting -= 1
-                        continue
                     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
                     result = landmarker.detect(image)
                     points = ([(p.x, p.y) for p in result.hand_landmarks[0]]
                               if result.hand_landmarks else None)
                     gesture = classify(points)
+                    # the preview keeps drawing through the cooldown, so the
+                    # picture never freezes while he's resting
+                    if self.preview and not self._draw(frame, points, gesture):
+                        break
+                    if resting > 0:
+                        resting -= 1
+                        continue
                     steady = steady + 1 if (gesture and gesture == last) else 0
                     last = gesture
                     if gesture and steady >= STEADY_FRAMES:
@@ -157,15 +182,30 @@ class Watch:
                         self.on_gesture(gesture)
         finally:
             capture.release()  # the eye closes the moment we're done
+            if self.preview:
+                try:
+                    cv2.destroyWindow("Alfred - gesture preview")
+                except Exception:
+                    pass
 
-    def start(self) -> None:
-        import threading
+    def _guard(self) -> None:
         if not available():
             raise RuntimeError("The [vision] extra isn't installed, sir "
                                "(pip install -e .[vision]).")
         if not model_ready():
             raise RuntimeError("The hand model isn't here yet, sir — "
                                "run `alfred gestures setup`.")
+
+    def run(self) -> None:
+        """Blocking watch on the calling thread — right for the CLI preview,
+        where OpenCV's window wants the main thread."""
+        self._guard()
+        self._stop = False
+        self._loop()
+
+    def start(self) -> None:
+        import threading
+        self._guard()
         self._stop = False
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
