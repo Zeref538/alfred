@@ -40,6 +40,31 @@ def test_extra_presses_do_not_refire():
     assert events == ["start", "stop"]
 
 
+def test_latch_toggles_begin_then_end():
+    from alfred.globalkeys import Latch
+    events = []
+    latch = Latch(lambda: events.append("begin"), lambda: events.append("end"))
+    latch.engage()
+    assert events == ["begin"] and latch.listening
+    latch.engage()
+    assert events == ["begin", "end"] and not latch.listening
+    latch.engage()
+    assert events == ["begin", "end", "begin"]
+
+
+def test_latched_chord_ignores_release():
+    # the live failure: releasing the keys could beat the mic opening, so the
+    # latch is driven by engagements only
+    from alfred.globalkeys import Chord, Latch
+    events = []
+    latch = Latch(lambda: events.append("begin"), lambda: events.append("end"))
+    chord = Chord(("j", "k"), latch.engage, lambda: None)
+    for _ in range(2):                       # two full press-and-release cycles
+        chord.press("j"); chord.press("k")
+        chord.release("j"); chord.release("k")
+    assert events == ["begin", "end"]        # not four events, not zero
+
+
 def test_other_keys_are_ignored():
     chord, events = _chord()
     chord.press("a")
