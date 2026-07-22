@@ -159,6 +159,29 @@ __PALETTE__
  #hint2 { text-align:center; font-size:.6rem; letter-spacing:.24em;
       text-transform:uppercase; color:var(--vio-dim); margin-top:.5rem; }
 
+ /* typing works too — no mic needed, and it doubles as a quick way to see
+    what Alfred can actually do without guessing at phrasing */
+ #ask { display:flex; gap:.5rem; margin-top:.9rem; }
+ #ask input { flex:1; background:#0a0714; border:1px solid var(--line);
+      color:var(--blu); font:inherit; padding:.55rem .7rem;
+      transition:border-color .2s; }
+ #ask input:focus { outline:none; border-color:rgba(63,208,255,.6); }
+ #ask button { border:1px solid var(--line); background:rgba(79,214,255,.05);
+      color:var(--vio-dim); font:inherit; padding:.55rem 1.1rem; cursor:pointer;
+      text-transform:uppercase; letter-spacing:.18em; font-size:.68rem;
+      transition:color .2s, border-color .2s; }
+ #ask button:hover { color:var(--blu); border-color:rgba(63,208,255,.6); }
+ #tryBox { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center;
+      margin-top:.6rem; }
+ #tryLabel { font-size:.62rem; letter-spacing:.2em; text-transform:uppercase;
+      color:var(--vio-dim); margin-right:.2rem; }
+ .try { border:1px solid rgba(160,107,255,.22); background:rgba(160,107,255,.05);
+      color:var(--vio-soft); font:inherit; font-size:.68rem; padding:.32rem .65rem;
+      border-radius:10px; cursor:pointer;
+      transition:color .2s, border-color .2s, box-shadow .2s; }
+ .try:hover { color:var(--gold); border-color:var(--gold);
+      box-shadow:0 0 14px rgba(255,198,92,.3); }
+
  /* the plan preview and gates — the consent surface must never be hidden */
  #feed { margin-top:.9rem; max-height:104px; overflow-y:auto; font-size:11.5px;
       line-height:1.65; color:var(--vio-soft); white-space:pre-wrap;
@@ -242,6 +265,20 @@ __PALETTE__
   <canvas id="wave"></canvas>
   <div id="sub">__GREETING__</div>
   <div id="hint2">press <b>__HOLD_LABEL__</b> to listen · press again to send</div>
+
+  <div id="ask">
+   <input id="askInput" placeholder="or type him something, sir…" autocomplete="off">
+   <button id="askSend">ask</button>
+  </div>
+  <div id="tryBox">
+   <span id="tryLabel">try:</span>
+   <button class="try" data-ask="open reddit.com">open reddit.com</button>
+   <button class="try" data-ask="search for python tutorials">search for python tutorials</button>
+   <button class="try" data-ask="focus notepad">focus notepad</button>
+   <button class="try" data-ask="launch calculator">launch calculator</button>
+   <button class="try" data-ask="set volume to 30">set volume to 30</button>
+   <button class="try" data-ask="what's on my clipboard">what's on my clipboard</button>
+  </div>
 
   <div id="feed"></div><div id="gates"></div>
 
@@ -575,6 +612,17 @@ events.onmessage = (m)=>{ const e = JSON.parse(m.data);
   else if (e.type === "gate") gateCard(e);
   else if (e.type === "gate_done"){ const c = document.getElementById("g"+e.id); if(c) c.remove(); } };
 document.getElementById("bell").onclick = ()=>post("/api/bell");
+// typed asks — the same door as voice, just without a microphone
+const askInput = document.getElementById("askInput");
+function sendAsk(text){
+  text = text.trim(); if (!text) return;
+  say(text, true);
+  post("/api/ask", { text });
+  askInput.value = "";
+}
+document.getElementById("askSend").onclick = ()=>sendAsk(askInput.value);
+askInput.addEventListener("keydown",(e)=>{ if(e.key === "Enter") sendAsk(askInput.value); });
+document.querySelectorAll(".try").forEach(b=>b.onclick=()=>sendAsk(b.dataset.ask));
 const HOLD = __HOLD_KEYS__;
 const GLOBAL_KEYS = __GLOBAL_KEYS__;
 function typingNow(){ const el = document.activeElement;
