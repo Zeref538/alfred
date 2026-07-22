@@ -3,6 +3,7 @@ instruments and the same lockfile web.py already keeps; adds nothing new to
 watch, just reads what is already there."""
 
 import importlib.util
+import time
 
 from . import config, telemetry
 from .web import _lockfile, _running_instance
@@ -30,6 +31,17 @@ def checks() -> list[tuple[bool, str]]:
                                 "`alfred stop` or delete it" % lock))
     else:
         results.append((True, f"running instance: {running or 'none'}"))
+
+    # cpu_percent() needs two samples to report anything real (the first call
+    # has no previous reading to diff against) — prime it with a throwaway
+    # call rather than report a false 0%.
+    telemetry.cpu_percent()
+    time.sleep(0.15)
+    cpu = telemetry.cpu_percent()
+    results.append((cpu < 90, f"cpu: {cpu:.0f}% busy"))
+
+    gpu = telemetry.gpu_percent(force=True)
+    results.append((gpu < 90, f"gpu: {gpu:.0f}% busy"))
 
     disk = telemetry.storage()
     ok = disk["percent"] < 90
