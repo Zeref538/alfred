@@ -631,22 +631,29 @@ const GLOBAL_KEYS = __GLOBAL_KEYS__;
 function typingNow(){ const el = document.activeElement;
   return el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"); }
 if (!GLOBAL_KEYS) {
-  // "armed" gates the toggle to the rising edge of both keys going down
-  // together, and won't re-arm until both are fully released — otherwise a
-  // finger shifting mid-hold (one key lifts and re-lands while the other
-  // stays down) re-fires allHeld() and silently toggles listening back off.
-  const held = new Set(); let latched = false, armed = true;
+  // Toggle fires only on the rising edge (not-all-held -> all-held), so
+  // holding both keys down doesn't retrigger from OS key-repeat. A cooldown
+  // after each toggle absorbs the case that broke the old "require both keys
+  // fully released" version: real fingers rarely release a two-key combo in
+  // perfect unison, so requiring that meant "press again to send" often
+  // never re-armed at all. A few hundred ms of cooldown still blocks the
+  // original jitter case (one key blipping while the other stays down) —
+  // that happens near-instantly — without blocking a deliberate second
+  // press, which happens seconds later after the user has spoken.
+  const COOLDOWN_MS = 500;
+  const held = new Set(); let latched = false, lastToggle = 0;
   const allHeld = ()=> HOLD.every(k => held.has(k));
   addEventListener("keydown",(e)=>{ if(e.repeat || typingNow()) return;
     const k = e.key.toLowerCase(); if(!HOLD.includes(k)) return;
+    const wasHeld = allHeld();
     held.add(k);
-    if(armed && allHeld()){ latched = !latched; post("/api/listen",{on:latched}); armed = false; }
+    const now = performance.now();
+    if(!wasHeld && allHeld() && (now - lastToggle) > COOLDOWN_MS){
+      latched = !latched; post("/api/listen",{on:latched}); lastToggle = now;
+    }
   });
   addEventListener("keyup",(e)=>{ const k = e.key.toLowerCase();
-    if(!HOLD.includes(k)) return;
-    held.delete(k);
-    if(held.size === 0) armed = true;
-  });
+    if(HOLD.includes(k)) held.delete(k); });
 }
 document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{
   say(b.textContent, true); post("/api/command", { name: b.dataset.cmd });
