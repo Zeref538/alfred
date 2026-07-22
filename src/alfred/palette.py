@@ -484,6 +484,9 @@ def main(argv: list[str] | None = None) -> int:
     if argv[:1] == ["tray"]:
         from .tray import main as tray_main
         return tray_main()
+    if argv[:1] == ["doctor"]:
+        from .doctor import main as doctor_main
+        return doctor_main()
 
     ledger = Ledger()
     undo = UndoManager()

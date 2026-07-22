@@ -11,12 +11,14 @@ _SET = ["powershell", "-NoProfile", "-Command", "$input | Set-Clipboard"]
 
 
 def _get() -> str:
-    out = subprocess.run(_GET, capture_output=True, timeout=10)
+    out = subprocess.run(_GET, capture_output=True, timeout=10,
+                         creationflags=subprocess.CREATE_NO_WINDOW)
     return out.stdout.decode("utf-8", errors="replace").rstrip("\r\n")
 
 
 def _set(text: str) -> None:
-    subprocess.run(_SET, input=text.encode("utf-8"), capture_output=True, timeout=10)
+    subprocess.run(_SET, input=text.encode("utf-8"), capture_output=True, timeout=10,
+                   creationflags=subprocess.CREATE_NO_WINDOW)
 
 
 def read(args: schemas.NoArgs) -> None:

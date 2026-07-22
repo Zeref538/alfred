@@ -139,14 +139,16 @@ def speak(text: str) -> None:
         import winsound
         winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
         return
-    subprocess.run(_SPEAK, input=text.encode("utf-8"), capture_output=True, timeout=60)
+    subprocess.run(_SPEAK, input=text.encode("utf-8"), capture_output=True, timeout=60,
+                   creationflags=subprocess.CREATE_NO_WINDOW)
 
 
 def speak_to_wav(text: str, wav_path: str) -> None:
     """Render speech to a WAV file — used by the loopback tests as a stand-in
     for a human at the microphone."""
     subprocess.run(_SPEAK_TO_WAV, input=text.encode("utf-8"), capture_output=True,
-                   timeout=60, env={**os.environ, "ALFRED_TTS_WAV": wav_path})
+                   timeout=60, env={**os.environ, "ALFRED_TTS_WAV": wav_path},
+                   creationflags=subprocess.CREATE_NO_WINDOW)
 
 
 # Whisper's own doubt. Below this mean log-probability, or above this
