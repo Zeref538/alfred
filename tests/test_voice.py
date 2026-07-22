@@ -131,3 +131,21 @@ def test_loopback_tts_to_whisper(tmp_path):
     speak_to_wav("set the volume to twenty five", wav)
     heard = transcribe(wav).lower()
     assert "volume" in heard and ("twenty five" in heard or "25" in heard)
+
+
+@pytest.mark.parametrize("heard", [
+    "thank you", "Thanks!", "thank you alfred", "that will be all",
+    "that's all", "no thanks", "nothing else",
+])
+def test_thanks_closes_the_conversation(heard):
+    from alfred.voice import is_thanks
+    assert is_thanks(heard)
+
+
+@pytest.mark.parametrize("heard", [
+    "open youtube", "set the volume to twenty", "play thanks for the memories",
+    "", "search for thanksgiving recipes",
+])
+def test_ordinary_speech_keeps_it_open(heard):
+    from alfred.voice import is_thanks
+    assert not is_thanks(heard)

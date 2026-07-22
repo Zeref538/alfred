@@ -197,6 +197,61 @@ def record(seconds: float = RECORD_SECONDS):
     return frames[:, 0]
 
 
+# Waiting for a pause is what lets a conversation run without a key for every
+# sentence: he listens until you stop, rather than for a fixed five seconds.
+SILENCE_RMS = 0.012      # below this a block counts as quiet
+SILENCE_HANG = 1.1       # this much quiet, after speech, ends the turn
+LEAD_IN = 4.0            # but wait this long for a first word before giving up
+MAX_UTTERANCE = 16.0
+
+
+def record_until_silence(max_seconds: float = MAX_UTTERANCE):
+    """Record until the master stops speaking. Returns whatever was said, or an
+    empty array if he never started."""
+    import numpy as np
+    import sounddevice as sd
+    block = int(0.1 * SAMPLE_RATE)
+    frames, quiet, spoke, elapsed = [], 0.0, False, 0.0
+    with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32",
+                        blocksize=block) as stream:
+        while elapsed < max_seconds:
+            chunk, _ = stream.read(block)
+            frames.append(chunk.copy())
+            elapsed += 0.1
+            loud = float(np.sqrt(np.mean(np.square(chunk))))
+            if loud > SILENCE_RMS:
+                spoke, quiet = True, 0.0
+            else:
+                quiet += 0.1
+                if spoke and quiet >= SILENCE_HANG:
+                    break
+                if not spoke and elapsed >= LEAD_IN:
+                    return np.zeros(0, dtype="float32")
+    return np.concatenate(frames)[:, 0] if frames else np.zeros(0, dtype="float32")
+
+
+_THANKS = ("thank you", "thanks", "thank u", "that will be all", "thats all",
+           "that is all", "that would be all", "no thanks", "nothing else",
+           "thats it", "that is it")
+
+
+def is_thanks(transcript: str) -> bool:
+    """'thank you' closes the conversation — politer than reaching for a key.
+
+    It must come at the END of what was said, and stand as its own words.
+    Merely containing the letters is not enough: "play thanks for the memories"
+    is an order, and "search for thanksgiving recipes" is a question, and
+    hanging up on either would be a small betrayal.
+    """
+    text = re.sub(r"['’]", "", transcript.lower())
+    text = " ".join(re.sub(r"[^a-z ]", " ", text).split())
+    # "thank you alfred" and "thanks, please" end with courtesies, not orders
+    text = re.sub(r"(?:\s+(?:alfr\w*|unfr\w*|elfr\w*|please|sir|now|then))+$",
+                  "", text).strip()
+    return any(text == phrase or text.endswith(" " + phrase)
+               for phrase in _THANKS)
+
+
 class Recorder:
     """Hold-to-talk: open the mic on key-down, close it on key-up, keep the
     frames in between. Used by the HUD's push-to-talk keys."""
