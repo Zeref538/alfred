@@ -22,6 +22,7 @@ import queue
 import re
 import secrets
 import threading
+import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -153,6 +154,7 @@ class Session:
         self._hold_timer = None
         self.global_keys = False  # set when the global chord is armed
         self._pairing = False     # a bridge pairing request is on screen
+        self._since = time.monotonic()
         from . import tabs
         tabs.set_emitter(self.emit)  # the extension hears switches on the SSE
         self._turn = threading.Lock()  # one command at a time — no overlapping turns
@@ -188,10 +190,33 @@ class Session:
         while not stop.is_set():
             if self._subscribers:
                 try:
-                    self.emit(type="telemetry", **telemetry.snapshot())
+                    self.emit(type="telemetry", **telemetry.snapshot(),
+                              alfred=self.readout())
                 except Exception:
                     pass
             stop.wait(TELEMETRY_INTERVAL)
+
+    def readout(self) -> dict:
+        """Alfred's own state for the right-hand rail. Everything here is
+        already in memory or mtime-cached, so it costs nothing to ask twice a
+        second."""
+        from . import config, settings, tabs, vocab
+        seen = tabs.VIEW.all()
+        return {
+            "model": settings.get("model"),
+            "hearing": settings.get("whisper"),
+            "voice": settings.get("piper_voice").replace("en_GB-", ""),
+            "pace": settings.get("voice_pace"),
+            "muted": self._muted,
+            "tabs": len(seen),
+            "bridge": "connected" if tabs.VIEW.fresh() else "not connected",
+            "sites": len(vocab.load().get("sites", {})),
+            "apps": len(config.ALLOWED_APPS),
+            "shortcuts": len(vocab.load_shortcuts()),
+            "undo": len(self.undo),
+            "uptime": int(time.monotonic() - self._since),
+            "camera": self._gestures is not None,
+        }
 
     def _try_begin(self) -> bool:
         """Claim the single turn slot; refuse politely if he's already busy."""
@@ -661,6 +686,7 @@ class Session:
         if not self._try_begin():
             return
         try:
+            self.emit(type="gesture", name=name)
             self.say(f'Gesture "{name}" → "{phrase}"')
             steps = self._plan_for(phrase)
             self.say("He would:")

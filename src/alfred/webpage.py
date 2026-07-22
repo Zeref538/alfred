@@ -69,17 +69,17 @@ __PALETTE__
         linear-gradient(90deg, rgba(63,208,255,.035) 1px, transparent 1px) 0 0/46px 100%; }
 
  /* --- the instrument rail ------------------------------------------------ */
- #shell { display:flex; gap:1rem; align-items:flex-start;
-        width:min(1080px,100%); }
- #rail { width:216px; flex:none; position:relative; padding:1.1rem .9rem;
+ #shell { display:flex; gap:2rem; align-items:flex-start;
+        width:min(1340px,100%); }
+ .rail { width:210px; flex:none; position:relative; padding:1.1rem .9rem;
         border:1px solid var(--line); background:var(--panel);
         backdrop-filter:blur(3px);
         box-shadow:0 0 40px rgba(160,107,255,.08),
                    inset 0 0 50px rgba(63,208,255,.03); }
- #rail h2 { font-size:.6rem; letter-spacing:.3em; color:var(--vio-dim);
+ .rail h2 { font-size:.6rem; letter-spacing:.3em; color:var(--vio-dim);
         text-transform:uppercase; margin-bottom:.9rem;
         display:flex; align-items:center; gap:.5rem; }
- #rail h2::after { content:""; flex:1; height:1px;
+ .rail h2::after { content:""; flex:1; height:1px;
         background:linear-gradient(90deg, var(--line), transparent); }
  .gauge { margin-bottom:1rem; }
  .gauge .top { display:flex; justify-content:space-between; align-items:baseline;
@@ -104,12 +104,20 @@ __PALETTE__
  .gauge.warm .top b { color:var(--gold); text-shadow:0 0 8px rgba(255,198,92,.5); }
  .gauge.hot .fill { background:linear-gradient(90deg, #ff7a5c, var(--red)); }
  .gauge.hot .top b { color:var(--red); text-shadow:0 0 8px rgba(255,90,110,.5); }
+ .stat { display:flex; justify-content:space-between; align-items:baseline;
+        gap:.5rem; padding:.3rem 0; border-bottom:1px dotted rgba(160,107,255,.14);
+        font-size:.6rem; letter-spacing:.16em; text-transform:uppercase;
+        color:var(--vio-dim); }
+ .stat b { color:var(--blu); letter-spacing:.02em; font-size:.7rem;
+        text-transform:none; text-align:right; text-shadow:0 0 8px var(--blu-glow); }
+ .stat b.off { color:var(--vio-dim); text-shadow:none; }
+ .stat b.live { color:var(--gold); text-shadow:0 0 8px rgba(255,198,92,.5); }
  #spark { display:flex; align-items:flex-end; gap:2px; height:34px; margin-top:.2rem;
         border-bottom:1px solid var(--line); }
  #spark i { flex:1; background:linear-gradient(180deg, var(--blu), var(--vio));
         min-height:1px; opacity:.75; transition:height .5s ease; }
- @media (max-width:900px) { #shell { flex-direction:column-reverse; }
-        #rail { width:100%; } }
+ @media (max-width:1180px) { #shell { flex-wrap:wrap; gap:1rem; }
+        .rail { width:calc(50% - .5rem); } #frame { order:-1; width:100%; flex:1 0 100%; } }
 
  #frame { flex:1; min-width:0; position:relative; padding:1.5rem 1.6rem 1.3rem;
         border:1px solid var(--line); background:var(--panel);
@@ -273,44 +281,54 @@ __PALETTE__
  #track.p2 { transform:translateX(-33.3333%) }
  #track.p3 { transform:translateX(-66.6666%) }
 
- /* the voice page: one big instrument and the words, nothing else */
- #stage { height:310px; display:flex; flex-direction:column;
-      align-items:center; justify-content:center; gap:1.2rem;
-      border:1px solid var(--line); background:
-      radial-gradient(420px 220px at 50% 55%, rgba(160,107,255,.10), transparent 70%),
-      rgba(6,4,14,.75); }
- #bigviz { display:flex; align-items:center; gap:4px; height:110px; }
- #bigviz i { width:5px; height:8px; border-radius:3px;
-      background:linear-gradient(180deg, var(--blu), var(--vio)); opacity:.55; }
- #stage.listening #bigviz i { background:linear-gradient(180deg, #ffe2ac, var(--gold));
-      opacity:1; animation:tall 1s ease-in-out infinite; }
- #stage.speaking #bigviz i { background:linear-gradient(180deg, #bfefff, var(--blu));
-      opacity:1; animation:tall .62s ease-in-out infinite; }
- @keyframes tall { 0%,100% { height:10px } 50% { height:96px } }
- #bigsub { min-height:2.4rem; max-width:80%; text-align:center; font-size:1.15rem;
-      color:#eaf7ff; text-shadow:0 0 14px var(--blu-glow); line-height:1.5; }
- #stagehint { font-size:.62rem; letter-spacing:.2em; text-transform:uppercase;
+ /* the voice page: a waveform standing free on the panel, and the words.
+    No frame — a box around a voice is just furniture. */
+ #stage { height:330px; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:1.6rem; }
+ #bigviz { display:flex; align-items:center; gap:5px; height:150px; }
+ #bigviz i { width:6px; border-radius:4px;
+      background:linear-gradient(180deg, var(--blu), var(--vio));
+      opacity:.45; transition:opacity .3s;
+      height:calc(var(--env) * 26px + 6px); }
+ #stage.listening #bigviz i, #stage.speaking #bigviz i { opacity:1;
+      animation:breathe var(--beat) ease-in-out infinite; }
+ #stage.listening #bigviz i { background:linear-gradient(180deg, #ffe2ac, var(--gold)); }
+ #stage.speaking #bigviz i { background:linear-gradient(180deg, #bfefff, var(--blu)); }
+ /* the envelope makes it a spindle — tall at the middle, tapering to nothing */
+ @keyframes breathe { 0%,100% { height:calc(var(--env) * 14px + 6px) }
+                      50% { height:calc(var(--env) * 132px + 8px) } }
+ #bigsub { min-height:2.6rem; max-width:78%; text-align:center; font-size:1.35rem;
+      color:#f0f8ff; text-shadow:0 0 18px var(--blu-glow); line-height:1.45;
+      letter-spacing:.01em; }
+ #stagehint { font-size:.6rem; letter-spacing:.24em; text-transform:uppercase;
       color:var(--vio-dim); }
 
- /* the video page: the camera as he sees it */
- #screen { height:310px; border:1px solid var(--line); position:relative;
-      background:rgba(6,4,14,.85); display:flex; align-items:center;
-      justify-content:center; overflow:hidden; }
- #cam { max-width:100%; max-height:100%; display:none;
-      filter:saturate(1.15) contrast(1.05); }
+ /* the video page: the picture itself, rounded, with the signs beneath it */
+ #screen { height:330px; position:relative; display:flex; align-items:center;
+      justify-content:center; }
+ #cam { max-width:100%; max-height:330px; display:none; border-radius:18px;
+      filter:saturate(1.15) contrast(1.05);
+      box-shadow:0 0 40px rgba(160,107,255,.28), 0 0 90px rgba(63,208,255,.12); }
  #camoff { text-align:center; color:var(--vio-dim); font-size:.72rem;
-      letter-spacing:.12em; line-height:2; padding:1rem; }
+      letter-spacing:.12em; line-height:2; padding:2rem;
+      border-radius:18px; border:1px dashed rgba(160,107,255,.28);
+      background:radial-gradient(300px 160px at 50% 50%,
+                 rgba(160,107,255,.07), transparent 70%); }
  #camoff b { display:block; color:var(--gold); letter-spacing:.2em;
       text-transform:uppercase; font-size:.66rem; margin-bottom:.5rem; }
- #screen::after { content:""; position:absolute; left:0; right:0; height:2px;
-      background:linear-gradient(90deg, transparent, var(--blu), transparent);
-      opacity:.5; animation:scanline 3.4s linear infinite; }
- @keyframes scanline { 0% { top:0 } 100% { top:100% } }
- #camrow { display:flex; gap:.5rem; align-items:center; margin-top:.6rem;
+ #signs { display:flex; gap:.5rem; justify-content:center; margin-top:1rem;
       flex-wrap:wrap; }
+ .sign { padding:.42rem .8rem; border-radius:10px; font-size:.6rem;
+      letter-spacing:.16em; text-transform:uppercase; color:var(--vio-dim);
+      border:1px solid rgba(160,107,255,.22); background:rgba(160,107,255,.05);
+      transition:color .25s, border-color .25s, box-shadow .25s, transform .25s; }
+ .sign.seen { color:var(--gold); border-color:var(--gold); transform:translateY(-2px);
+      box-shadow:0 0 18px rgba(255,198,92,.45); }
+ #camrow { display:flex; gap:.6rem; align-items:center; justify-content:center;
+      margin-top:.9rem; flex-wrap:wrap; }
 </style></head><body>
 <div id="shell">
-<aside id="rail">
+<aside class="rail" id="railL">
  <span class="corner tl"></span><span class="corner br"></span>
  <h2>the machine</h2>
  <div class="gauge" id="gCpu"><div class="top"><span>cpu</span><b>—</b></div>
@@ -327,6 +345,24 @@ __PALETTE__
   <div class="sub" id="sDisk">&nbsp;</div></div>
  <h2>cpu, last minute</h2>
  <div id="spark"></div>
+</aside>
+<aside class="rail" id="railR">
+ <span class="corner tr"></span><span class="corner bl"></span>
+ <h2>the butler</h2>
+ <div class="stat"><span>brain</span><b id="rModel">—</b></div>
+ <div class="stat"><span>hearing</span><b id="rHearing">—</b></div>
+ <div class="stat"><span>voice</span><b id="rVoice">—</b></div>
+ <div class="stat"><span>pace</span><b id="rPace">—</b></div>
+ <h2>what he knows</h2>
+ <div class="stat"><span>places</span><b id="rSites">—</b></div>
+ <div class="stat"><span>programs</span><b id="rApps">—</b></div>
+ <div class="stat"><span>your names</span><b id="rShort">—</b></div>
+ <h2>right now</h2>
+ <div class="stat"><span>browser</span><b id="rBridge">—</b></div>
+ <div class="stat"><span>tabs seen</span><b id="rTabs">—</b></div>
+ <div class="stat"><span>camera</span><b id="rCam">—</b></div>
+ <div class="stat"><span>undo depth</span><b id="rUndo">—</b></div>
+ <div class="stat"><span>on duty</span><b id="rUp">—</b></div>
 </aside>
 <div id="frame">
  <span class="corner tl"></span><span class="corner tr"></span>
@@ -383,11 +419,16 @@ __PALETTE__
      the hand drawn as joints and bones, and the sign I read from it.<br>
      It opens only while you leave this on.</div>
    </div>
+   <div id="signs">
+    <span class="sign" data-sign="open_palm">open palm</span>
+    <span class="sign" data-sign="fist">fist</span>
+    <span class="sign" data-sign="peace">peace</span>
+    <span class="sign" data-sign="point">point</span>
+    <span class="sign" data-sign="thumbs_up">thumbs up</span>
+   </div>
    <div id="camrow">
     <label title="webcam reads hand gestures on demand; every gesture is confirmed before it acts">
-     <input type="checkbox" id="gestures"> &#128400; camera &amp; gestures</label>
-    <span style="color:var(--vio-dim);font-size:.62rem;letter-spacing:.14em">
-     open palm · fist · peace · point · thumbs up</span>
+     <input type="checkbox" id="gestures"> &#128400; open the camera</label>
    </div>
   </section>
 
@@ -433,9 +474,16 @@ function post(path, body){ return fetch(path, {method:"POST",
 const stage = document.getElementById("stage");
 const bigsub = document.getElementById("bigsub");
 const bigviz = document.getElementById("bigviz");
-for (let i = 0; i < 26; i++){
+// A spindle: tallest at the centre, tapering to nothing at both ends, so the
+// waveform reads as one shape rather than a row of unrelated sticks.
+const BARS = 33;
+for (let i = 0; i < BARS; i++){
   const bar = document.createElement("i");
-  bar.style.animationDelay = (i % 9) * 0.07 + "s";
+  const fromMiddle = Math.abs(i - (BARS - 1) / 2) / ((BARS - 1) / 2);
+  const envelope = Math.pow(Math.cos(fromMiddle * Math.PI / 2), 1.35);
+  bar.style.setProperty("--env", envelope.toFixed(3));
+  bar.style.setProperty("--beat", (0.62 + (i % 5) * 0.07).toFixed(2) + "s");
+  bar.style.animationDelay = ((i % 7) * 0.06).toFixed(2) + "s";
   bigviz.append(bar);
 }
 function setState(s){
@@ -510,7 +558,27 @@ function pushSpark(percent){
     bars[i].style.height = bars[i + 1].style.height || "1px";
   bars[bars.length - 1].style.height = Math.max(1, percent) + "%";
 }
+function put(id, value, tone){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = value;
+  el.className = tone || "";
+}
+function butler(a){
+  if (!a) return;
+  put("rModel", a.model); put("rHearing", a.hearing);
+  put("rVoice", a.muted ? "muted" : a.voice, a.muted ? "off" : "");
+  put("rPace", a.pace + "×");
+  put("rSites", a.sites); put("rApps", a.apps); put("rShort", a.shortcuts);
+  put("rBridge", a.bridge, a.bridge === "connected" ? "live" : "off");
+  put("rTabs", a.tabs || "—", a.tabs ? "" : "off");
+  put("rCam", a.camera ? "open" : "closed", a.camera ? "live" : "off");
+  put("rUndo", a.undo || "—", a.undo ? "" : "off");
+  const m = Math.floor(a.uptime / 60), h = Math.floor(m / 60);
+  put("rUp", h ? h + "h " + (m % 60) + "m" : m + "m " + (a.uptime % 60) + "s");
+}
 function instruments(t){
+  butler(t.alfred);
   gauge("gCpu", t.cpu, {id:"sCpu", text:"busy " + (t.cpu||0).toFixed(0) + "%"});
   gauge("gGpu", t.gpu, {id:"sGpu", text:"all engines"});
   gauge("gRam", t.ram.percent, {id:"sRam",
@@ -554,6 +622,10 @@ events.onmessage = (m)=>{ const e = JSON.parse(m.data);
     subtitle.textContent = quoted;
     bigsub.textContent = quoted || "Press the chord and speak, sir."; }
   else if (e.type === "telemetry") instruments(e);
+  else if (e.type === "gesture"){
+    const chip = document.querySelector('.sign[data-sign="' + e.name + '"]');
+    if (chip){ chip.classList.add("seen");
+               setTimeout(()=>chip.classList.remove("seen"), 1600); } }
   else if (e.type === "state") setState(e.state);
   else if (e.type === "gate") gateCard(e);
   else if (e.type === "gate_done"){ const c = document.getElementById("g"+e.id); if(c) c.remove(); } };
