@@ -271,13 +271,14 @@ __PALETTE__
    <button id="askSend">ask</button>
   </div>
   <div id="tryBox">
-   <span id="tryLabel">try:</span>
+   <span id="tryLabel">most used:</span>
    <button class="try" data-ask="open reddit.com">open reddit.com</button>
    <button class="try" data-ask="search for python tutorials">search for python tutorials</button>
-   <button class="try" data-ask="focus notepad">focus notepad</button>
+   <button class="try" data-ask="launch notepad">launch notepad</button>
    <button class="try" data-ask="launch calculator">launch calculator</button>
    <button class="try" data-ask="set volume to 30">set volume to 30</button>
    <button class="try" data-ask="what's on my clipboard">what's on my clipboard</button>
+   <button class="try" data-cmd="doctor">system check</button>
   </div>
 
   <div id="feed"></div><div id="gates"></div>
@@ -622,7 +623,9 @@ function sendAsk(text){
 }
 document.getElementById("askSend").onclick = ()=>sendAsk(askInput.value);
 askInput.addEventListener("keydown",(e)=>{ if(e.key === "Enter") sendAsk(askInput.value); });
-document.querySelectorAll(".try").forEach(b=>b.onclick=()=>sendAsk(b.dataset.ask));
+// most-used chips: free-text ones go through /api/ask, named ones (like
+// "system check") are wired below by the generic [data-cmd] handler instead
+document.querySelectorAll(".try[data-ask]").forEach(b=>b.onclick=()=>sendAsk(b.dataset.ask));
 const HOLD = __HOLD_KEYS__;
 const GLOBAL_KEYS = __GLOBAL_KEYS__;
 function typingNow(){ const el = document.activeElement;
@@ -645,7 +648,9 @@ if (!GLOBAL_KEYS) {
     if(held.size === 0) armed = true;
   });
 }
-document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>post("/api/command",{name:b.dataset.cmd}));
+document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>{
+  say(b.textContent, true); post("/api/command", { name: b.dataset.cmd });
+});
 document.getElementById("cog").onclick = ()=>{ location.href = "/settings?t="+TOKEN; };
 document.getElementById("attuneBtn").onclick = (e)=>{
   e.target.disabled = true; e.target.textContent = "attuning…";

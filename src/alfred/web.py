@@ -711,6 +711,13 @@ class Session:
         elif name == "burn":
             self.ledger.burn_today()
             self.say("The day's page is ash, sir.")
+        elif name == "doctor":
+            from . import doctor
+            all_ok = True
+            for ok, line in doctor.checks():
+                self.say(("OK  " if ok else "!!  ") + line)
+                all_ok = all_ok and ok
+            self.say("All well, sir." if all_ok else "A few things want attention, sir.")
         elif name == "tabs":
             # everything he knows about your browser, in full — the counterpart
             # to the privacy rules: you can always audit what he can see
@@ -1025,8 +1032,12 @@ def make_server(session: Session, token: str, port: int = 0) -> ThreadingHTTPSer
             body = json.loads(self.rfile.read(length) or b"{}")
             route = self.path.partition("?")[0]
             if route == "/api/ask" and body.get("text", "").strip():
+                # the HUD's typed box stands in for voice, so it should talk
+                # back too — ask() defaults spoken=False for the silent CLI
+                # text mode, which isn't what a "type him something" box wants
                 threading.Thread(target=session.ask,
-                                 args=(body["text"].strip(),), daemon=True).start()
+                                 args=(body["text"].strip(),), kwargs={"spoken": True},
+                                 daemon=True).start()
             elif route == "/api/voice":
                 threading.Thread(target=session.hear, daemon=True).start()
             elif route == "/api/listen":  # hold-to-talk: on key-down / key-up
