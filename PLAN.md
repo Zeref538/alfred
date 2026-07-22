@@ -194,6 +194,14 @@ autonomous or unattended operation — Alfred acts only on an explicit summons.
       framing from the eval), RAG index update.
 - **Stretch (only if ahead):** per-app volume.
 
+### Future — the video tab
+The HUD's `voice`/`video` tab switcher was removed (2026-07); the camera
+preview and hand-gesture chips it hosted are backend-complete (`vision`
+extra, `/api/camera.mjpg`, `/api/gestures`) but had no finished front end and
+were adding surface area to a page that's really about the voice. Revisit as
+its own pass: a dedicated camera page, gesture-chip feedback restored, decide
+whether it lives as a HUD tab or a separate window.
+
 ## Success criteria
 
 | outcome | bar |

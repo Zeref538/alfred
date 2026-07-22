@@ -10,6 +10,10 @@ planner), and voice (local whisper + SAPI). The sealed 50-command evaluation
 (Phase 4) is pending; numbers below are from the *development* smoke set and
 say so.
 
+<!-- demo: drop a short screen recording (`alfred web`, ask it something,
+     show a gate firing) in as `docs/demo.gif` and swap the line below for
+     `![Alfred demo](docs/demo.gif)` -->
+
 ## The trust architecture
 
 The AI never gets free control. There is exactly one door between anything
