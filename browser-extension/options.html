@@ -16,8 +16,9 @@
  .rule { border:0; border-top:1px solid rgba(57,215,255,.18); margin:.9rem 0; }
 </style></head><body>
 <h1>ALFRED — TAB BRIDGE</h1>
-<p>Paste the address Alfred printed when he started (the one with <code>?t=</code>).
-   It carries the port and this session's key.</p>
+<p>Paste the address Alfred printed when he started — just the host and port
+   is enough. Connecting asks Alfred to approve the bridge once; after that it
+   reconnects on its own, even across restarts.</p>
 <input id="url" placeholder="http://127.0.0.1:52824/?t=...">
 <button id="save">connect</button>
 <button id="pause">pause</button>

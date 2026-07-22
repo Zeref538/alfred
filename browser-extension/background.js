@@ -51,11 +51,15 @@ async function pushTabs() {
   const tabs = await chrome.tabs.query({});
   const payload = tabs.map(t => ({ id: t.id, title: t.title || "", url: t.url || "" }));
   try {
-    await fetch(base + "/api/tabs", {
+    const r = await fetch(base + "/api/tabs", {
       method: "POST",
       headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
       body: JSON.stringify({ tabs: payload })
     });
+    // a stored key that no longer works (e.g. left over from before pairing
+    // used the long-lived bridge key) shouldn't fail silently forever —
+    // drop it so the next alarm tick re-pairs automatically
+    if (r.status === 401) await chrome.storage.local.remove("token");
   } catch (e) { /* Alfred is not running; nothing to do */ }
 }
 
