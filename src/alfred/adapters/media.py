@@ -32,8 +32,13 @@ def media_control(args: schemas.MediaControl) -> None:
 
 
 def _endpoint():
+    import comtypes
     from pycaw.pycaw import AudioUtilities
 
+    # COM is per-thread; adapters run on whatever thread the executor spawned
+    # for this command, which may never have called this. Safe to call every
+    # time — comtypes just bumps a refcount if the thread is already inited.
+    comtypes.CoInitialize()
     return AudioUtilities.GetSpeakers().EndpointVolume
 
 
