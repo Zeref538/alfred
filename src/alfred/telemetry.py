@@ -118,7 +118,8 @@ def gpu_percent(force: bool = False) -> float:
     value = 0.0
     try:
         done = subprocess.run(["powershell", "-NoProfile", "-Command", _GPU_QUERY],
-                              capture_output=True, text=True, timeout=GPU_TIMEOUT)
+                              capture_output=True, text=True, timeout=GPU_TIMEOUT,
+                              creationflags=subprocess.CREATE_NO_WINDOW)
         value = min(100.0, max(0.0, float(done.stdout.strip() or 0)))
     except Exception:
         value = 0.0
