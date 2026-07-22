@@ -43,7 +43,7 @@ from . import voice as _voice  # light at import; the models load lazily
 
 # One boot line per summoning — chosen now so the page and the voice agree.
 GREETING = _voice.greeting()
-MAX_HOLD_SECONDS = 20  # backstop for a forgotten second press; also self-heals
+MAX_HOLD_SECONDS = 90  # backstop for a forgotten second press; also self-heals
 IDLE_GRACE_SECONDS = 3.0  # after the last window closes, dismiss himself
 
 # The bridge needs a fixed address and a key that outlives the session, or the
