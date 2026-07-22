@@ -68,7 +68,8 @@ __PALETTE__
  /* --- three columns: cards, the voice, cards --------------------------- */
  #room { display:flex; gap:2rem; align-items:stretch;
         width:100%; justify-content:space-between; }
- .side { width:250px; flex:none; display:flex; flex-direction:column; gap:.8rem; }
+ .side { width:250px; flex:none; display:flex; flex-direction:column; gap:.8rem;
+        justify-content:center; }
 
  /* each reading is its own card, standing apart from the stage */
  .card { position:relative; padding:.9rem 1rem;
@@ -113,7 +114,8 @@ __PALETTE__
  .bl { bottom:-2px; left:-2px; border-right:0; border-top:0; }
  .br { bottom:-2px; right:-2px; border-left:0; border-top:0; }
 
- header { display:flex; align-items:center; gap:.9rem; justify-content:center; }
+ header { display:flex; width:100%; align-items:center; gap:.9rem; justify-content:center;
+      margin-bottom:2.4rem; }
  #reactor { width:44px; height:44px; border-radius:50%; position:relative; flex:none;
         background:radial-gradient(circle, #fff 0%, #cfe9ff 14%, var(--blu) 42%,
                    rgba(8,44,66,.92) 72%);
@@ -140,16 +142,6 @@ __PALETTE__
  #status { font-size:.62rem; color:var(--vio-dim); letter-spacing:.22em;
       margin-top:.25rem; text-transform:uppercase; }
  #status b { color:var(--blu); }
- #tabs { display:flex; gap:.45rem; }
- .tab { padding:.55rem 1.3rem; cursor:pointer; border:1px solid var(--line);
-      background:rgba(79,214,255,.05); font-size:.72rem; letter-spacing:.24em;
-      text-transform:uppercase; color:var(--vio-dim);
-      transition:color .25s, border-color .25s, background .25s, box-shadow .25s; }
- .tab:hover { color:var(--vio-soft); }
- .tab.on { color:var(--blu); border-color:rgba(63,208,255,.6);
-      background:linear-gradient(180deg, rgba(63,208,255,.14), transparent);
-      box-shadow:0 0 16px rgba(63,208,255,.20); }
-
  /* whose voice it is */
  #who { display:flex; justify-content:center; gap:2.4rem; margin-top:1rem;
       font-size:.6rem; letter-spacing:.3em; text-transform:uppercase; }
@@ -159,7 +151,7 @@ __PALETTE__
 
  /* the visualiser is a canvas: one element, drawn only when there is
     something to say, rather than dozens of animated boxes */
- #wave { display:block; width:100%; height:300px; }
+ #wave { display:block; width:100%; height:440px; }
  #sub { min-height:3rem; text-align:center; font-size:1.4rem; line-height:1.45;
       color:#f0f8ff; text-shadow:0 0 18px var(--blu-glow); padding:0 1rem;
       transition:opacity .3s; }
@@ -180,18 +172,6 @@ __PALETTE__
  .gate::before { content:"⚠"; font-size:.9rem; flex:none; }
  .gate button { border-color:var(--gold); color:var(--gold); }
 
- /* the video page, for later */
- #screen { display:none; align-items:center; justify-content:center; height:230px; }
- #cam { max-width:100%; max-height:230px; border-radius:18px;
-      box-shadow:0 0 40px rgba(160,107,255,.28); }
- #signs { display:flex; gap:.45rem; justify-content:center; margin-top:.8rem;
-      flex-wrap:wrap; }
- .sign { padding:.36rem .7rem; border-radius:10px; font-size:.58rem;
-      letter-spacing:.16em; text-transform:uppercase; color:var(--vio-dim);
-      border:1px solid rgba(160,107,255,.22); background:rgba(160,107,255,.05);
-      transition:color .25s, border-color .25s, box-shadow .25s, transform .25s; }
- .sign.seen { color:var(--gold); border-color:var(--gold); transform:translateY(-2px);
-      box-shadow:0 0 18px rgba(255,198,92,.45); }
 
  #bar { display:flex; gap:.9rem; align-items:center; margin-top:auto;
       padding-top:1.1rem; flex-wrap:wrap; }
@@ -260,14 +240,6 @@ __PALETTE__
 
   <div id="who"><span class="me">you</span><span class="him">alfred</span></div>
   <canvas id="wave"></canvas>
-  <div id="screen"><img id="cam" alt="the camera, as Alfred sees it"></div>
-  <div id="signs" style="display:none">
-   <span class="sign" data-sign="open_palm">open palm</span>
-   <span class="sign" data-sign="fist">fist</span>
-   <span class="sign" data-sign="peace">peace</span>
-   <span class="sign" data-sign="point">point</span>
-   <span class="sign" data-sign="thumbs_up">thumbs up</span>
-  </div>
   <div id="sub">__GREETING__</div>
   <div id="hint2">press <b>__HOLD_LABEL__</b> to listen · press again to send</div>
 
@@ -284,12 +256,6 @@ __PALETTE__
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"
      fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="8.5" y="8.5"
      width="7" height="7" rx="1.2" fill="currentColor"/></svg>stop</button>
-   <div id="tabs">
-    <div class="tab on" data-page="voice">◉ voice</div>
-    <div class="tab" data-page="video">▣ video</div>
-   </div>
-   <label id="camtoggle" title="webcam reads hand gestures on demand; every gesture is confirmed">
-    <input type="checkbox" id="gestures"> &#128400; camera</label>
    <button id="cog" style="margin-left:auto" title="settings">
     <svg viewBox="0 0 24 24" aria-hidden="true" style="margin:0"><path fill="none"
      stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"
@@ -355,67 +321,173 @@ function fit(){ const r = wave.getBoundingClientRect(), d = devicePixelRatio || 
   ctx.setTransform(d, 0, 0, d, 0, 0); }
 addEventListener("resize", fit);
 
-// A wireframe orb: rings of points laid on a disc, each ring turned a little
-// against the last so the spokes fall diagonally and read as a mesh. The rim
-// undulates on three sines of different speeds, so it never visibly repeats.
-const RINGS = 11, SPOKES = 58;
-const TOPCOL = { idle:"#4a5f86", listening:"#ffd27a", speaking:"#7ee6ff" };
-const BOTCOL = { idle:"#4a4470", listening:"#ff9a5c", speaking:"#9a7bff" };
+// A "big data network" sphere: nodes scattered evenly over the surface
+// (Fibonacci lattice — simple, even spacing, no clustering) connected to
+// their few nearest neighbours, rather than a dense UV wireframe grid.
+// Everything static (positions, edges, jitter seeds) is computed once;
+// the animation loop only rotates, projects, and draws.
+const NODES = 220, NEIGHBOURS = 3;
+// palette flips by state: blue/cyan idle, gold while he's hearing you, violet
+// while he's speaking — same five-slot shape so drawing code doesn't care.
+const PALETTES = {
+  idle:      ["#8cd6ff", "#5fa8ff", "#a6c8ff", "#7ee6ff", "#bfe9ff"],
+  listening: ["#ffd27a", "#e8a33c", "#ffe2ac", "#ffc266", "#fff0d1"],
+  speaking:  ["#c9a6ff", "#8b5fe8", "#e6d1ff", "#a878ff", "#f0e3ff"],
+};
 
-function wobble(a, t, ring){
-  return Math.sin(a * 3 + t * 1.10 + ring * 0.35)
-       + Math.sin(a * 7 - t * 1.45 + ring * 0.20) * 0.45
-       + Math.sin(a * 11 + t * 0.75) * 0.22;
+const VX = new Float32Array(NODES), VY = new Float32Array(NODES), VZ = new Float32Array(NODES);
+const SFREQ = new Float32Array(NODES), SPHASE = new Float32Array(NODES);
+const GX = new Float32Array(NODES), GY = new Float32Array(NODES), GZ = new Float32Array(NODES);
+
+function hash(i, j){
+  const s = Math.sin(i * 12.9898 + j * 78.233) * 43758.5453;
+  return s - Math.floor(s);
+}
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+for (let i = 0; i < NODES; i++){
+  const y = 1 - (i / (NODES - 1)) * 2, r = Math.sqrt(Math.max(0, 1 - y * y)), a = GOLDEN * i;
+  VX[i] = Math.cos(a) * r; VY[i] = y; VZ[i] = Math.sin(a) * r;
+  const h = hash(i, NODES - i);
+  SFREQ[i] = 0.6 + h * 1.6; SPHASE[i] = h * Math.PI * 2;   // gentle per-node pulse
+}
+// nearest neighbours, found once — O(NODES^2) at load, never again
+const EDGES = [];
+{
+  const seen = new Set();
+  for (let i = 0; i < NODES; i++){
+    const dists = [];
+    for (let j = 0; j < NODES; j++){
+      if (i === j) continue;
+      const dx = VX[i] - VX[j], dy = VY[i] - VY[j], dz = VZ[i] - VZ[j];
+      dists.push([dx * dx + dy * dy + dz * dz, j]);
+    }
+    dists.sort((p, q) => p[0] - q[0]);
+    for (let k = 0; k < NEIGHBOURS; k++){
+      const j = dists[k][1], key = i < j ? i * NODES + j : j * NODES + i;
+      if (!seen.has(key)){ seen.add(key); EDGES.push(i, j); }
+    }
+  }
+}
+const PERSP = 2.6, TILT = 0.30;
+// gentle irregular tumble: a few off-ratio sines summed, so the spin never
+// settles into an obviously repeating loop — kept mild, unlike a chaotic mesh
+function drift(t, a, b, c){
+  return Math.sin(t * a) * 0.6 + Math.sin(t * b + 1.7) * 0.3 + Math.sin(t * c + 0.4) * 0.1;
+}
+function projectAll(t, pulseAmp, ry, rz, tilt, base, cx, cy){
+  const cosY = Math.cos(ry), sinY = Math.sin(ry), cosX = Math.cos(tilt), sinX = Math.sin(tilt),
+        cosZ = Math.cos(rz), sinZ = Math.sin(rz);
+  for (let i = 0; i < NODES; i++){
+    const bulge = 1 + Math.sin(t * SFREQ[i] + SPHASE[i]) * pulseAmp;
+    const x = VX[i] * bulge, y = VY[i] * bulge, z = VZ[i] * bulge;
+    const x1 = x * cosY + z * sinY, z1 = -x * sinY + z * cosY;
+    const y1 = y * cosX - z1 * sinX, z2 = y * sinX + z1 * cosX;
+    const x2 = x1 * cosZ - y1 * sinZ, y3 = x1 * sinZ + y1 * cosZ;
+    // clamp how close a point can get to the camera plane — this is what
+    // keeps perspective scale (and the sphere's on-screen size) bounded, so
+    // it can't balloon past the canvas edge on a fast bulge
+    const scale = PERSP / (PERSP - Math.min(z2, PERSP * 0.75));
+    GX[i] = cx + x2 * base * scale; GY[i] = cy + y3 * base * scale; GZ[i] = z2;
+  }
+}
+// shards: short streaks that spawn on a node and fly outward. A fixed pool,
+// reused in place (no push/splice churn); shadowBlur is off for these (the
+// single most expensive canvas state to toggle per-call) since the "lighter"
+// blend already makes overlapping strokes glow on its own.
+const MAX_SHARDS = 70;
+const SHARDS = [];
+for (let n = 0; n < MAX_SHARDS; n++) SHARDS.push({});
+let shardCount = 0;
+function spawnShard(cx, cy, pal){
+  if (shardCount >= MAX_SHARDS) return;
+  const i = Math.floor(Math.random() * NODES);
+  const px = GX[i], py = GY[i];
+  const dx = px - cx, dy = py - cy;
+  const dist = Math.hypot(dx, dy) || 1;
+  const jitter = (Math.random() - 0.5) * 0.6;
+  const speed = 1.0 + Math.random() * 1.8;
+  const s = SHARDS[shardCount++];
+  s.x = px; s.y = py;
+  s.vx = (dx / dist + jitter) * speed; s.vy = (dy / dist - jitter) * speed;
+  s.life = 0; s.maxLife = 24 + Math.random() * 30;
+  s.color = pal[Math.floor(Math.random() * pal.length)];
+  s.len = 3 + Math.random() * 6;
+}
+function drawShards(){
+  ctx.shadowBlur = 0;
+  ctx.globalCompositeOperation = "lighter";
+  for (let k = shardCount - 1; k >= 0; k--){
+    const s = SHARDS[k];
+    s.vx *= 1.03; s.vy *= 1.03;
+    s.x += s.vx; s.y += s.vy; s.life++;
+    if (s.life > s.maxLife){                // swap-remove: O(1), no shifting
+      shardCount--;
+      SHARDS[k] = SHARDS[shardCount]; SHARDS[shardCount] = s;
+      continue;
+    }
+    const alpha = 1 - s.life / s.maxLife, back = Math.hypot(s.vx, s.vy) || 1;
+    ctx.strokeStyle = s.color;
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(s.x - (s.vx / back) * s.len, s.y - (s.vy / back) * s.len);
+    ctx.lineTo(s.x, s.y);
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
 }
 function draw(){
   const w = wave.clientWidth, h = wave.clientHeight;
   const cx = w / 2, cy = h / 2;
   ctx.clearRect(0, 0, w, h);
   energy += (target - energy) * 0.07;
-  phase += mode === "idle" ? 0.005 : 0.022;
-  const base = Math.min(w, h) * 0.42;
+  phase += mode === "idle" ? 0.006 : 0.016;
+  // 0.34 (not 0.40) leaves headroom so the clamped perspective bulge never
+  // reaches the canvas edge, however excited the animation gets
+  const base = Math.min(w, h) * 0.34 * (1 + energy * 0.05);
+  const ry = phase + drift(phase, 0.17, 0.29, 0.11) * 0.25;
+  const rz = drift(phase, 0.13, 0.23, 0.07) * 0.12;
+  const tilt = TILT + drift(phase, 0.09, 0.19, 0.05) * 0.10;
+  const pulseAmp = 0.035 + energy * 0.05;   // modest — a pulse, not a scribble
 
-  const paint = ctx.createLinearGradient(0, cy - base, 0, cy + base);
-  paint.addColorStop(0, TOPCOL[mode] || TOPCOL.idle);
-  paint.addColorStop(1, BOTCOL[mode] || BOTCOL.idle);
-  ctx.strokeStyle = paint;
-  ctx.shadowColor = TOPCOL[mode] || TOPCOL.idle;
+  projectAll(phase, pulseAmp, ry, rz, tilt, base, cx, cy);
 
-  // the points, once — then drawn twice, as rings and as spokes
-  const grid = [];
-  for (let r = 0; r < RINGS; r++){
-    const spread = (r + 1) / RINGS;
-    const turn = r * 0.13;                       // the diagonal in the mesh
-    const ring = [];
-    for (let k = 0; k <= SPOKES; k++){
-      const a = (k / SPOKES) * Math.PI * 2 + turn;
-      // only the outer rings ripple much, as in a struck membrane
-      const swell = 1 + wobble(a, phase, r) * energy * 0.16 * (0.35 + spread);
-      const rad = base * spread * swell;
-      ring.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad * 0.92]);
-    }
-    grid.push(ring);
-  }
-  for (let r = 0; r < RINGS; r++){
+  const pal = PALETTES[mode] || PALETTES.idle;
+  const spawnCount = Math.random() < (0.2 + energy * 0.6) ? 1 + Math.floor(energy * 2) : 0;
+  for (let n = 0; n < spawnCount; n++) spawnShard(cx, cy, pal);
+  drawShards();   // resets shadowBlur to 0 when done
+
+  // edges: alpha by depth (nearer = brighter), one batched stroke per band
+  ctx.lineWidth = 0.7;
+  ctx.strokeStyle = pal[1];
+  for (let band = 0; band < 3; band++){
+    const lo = -1 + band * (2 / 3), hi = lo + 2 / 3;
+    ctx.globalAlpha = (0.12 + band * 0.22) * (0.6 + energy * 0.4);
     ctx.beginPath();
-    grid[r].forEach(([x, y], k) => k ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
-    const outer = r === RINGS - 1;
-    ctx.globalAlpha = (outer ? 0.95 : 0.16 + 0.5 * (r / RINGS)) * (0.45 + energy * 0.55);
-    ctx.lineWidth = outer ? 1.7 : 0.7;
-    ctx.shadowBlur = outer ? 16 : 0;
+    for (let e = 0; e < EDGES.length; e += 2){
+      const i = EDGES[e], j = EDGES[e + 1], mz = (GZ[i] + GZ[j]) / 2;
+      if (mz < lo || mz >= hi) continue;
+      ctx.moveTo(GX[i], GY[i]); ctx.lineTo(GX[j], GY[j]);
+    }
     ctx.stroke();
+  }
+
+  // nodes: small glowing dots, nearer ones bigger and brighter. shadowBlur is
+  // set once for the whole loop, not per node — toggling it per draw call is
+  // the single costliest canvas state change, same lesson as the shards.
+  ctx.shadowColor = pal[3];
+  ctx.shadowBlur = 6 + energy * 6;
+  ctx.fillStyle = pal[0];
+  for (let i = 0; i < NODES; i++){
+    const depth = (GZ[i] + 1) / 2;                 // 0 (far) .. 1 (near)
+    const r = 0.9 + depth * 1.6 + energy * 0.6;
+    ctx.globalAlpha = 0.35 + depth * 0.5 + energy * 0.15;
+    ctx.beginPath();
+    ctx.arc(GX[i], GY[i], r, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.shadowBlur = 0;
-  ctx.lineWidth = 0.55;
-  ctx.globalAlpha = 0.13 + energy * 0.22;
-  for (let k = 0; k <= SPOKES; k += 1){
-    ctx.beginPath();
-    for (let r = 0; r < RINGS; r++){
-      const [x, y] = grid[r][k];
-      r ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-    }
-    ctx.stroke();
-  }
   ctx.globalAlpha = 1;
   raf = requestAnimationFrame(draw);
 }
@@ -493,27 +565,6 @@ function gateCard(e){
   }
   box.append(label, buttons); gates.append(box);
 }
-// --- voice / video ---------------------------------------------------------
-const cam = document.getElementById("cam"), screen = document.getElementById("screen");
-const signs = document.getElementById("signs");
-let page = "voice";
-function show(name){
-  page = name;
-  document.querySelectorAll(".tab").forEach(t =>
-    t.classList.toggle("on", t.dataset.page === name));
-  const voice = name === "voice";
-  wave.style.display = voice ? "block" : "none";
-  who.style.display = voice ? "flex" : "none";
-  screen.style.display = voice ? "none" : "flex";
-  signs.style.display = voice ? "none" : "flex";
-  document.getElementById("camtoggle").style.display = voice ? "none" : "flex";
-  if (voice){ camStream(false); startDrawing(); } else { stopDrawing(); }
-}
-document.querySelectorAll(".tab").forEach(t => t.onclick = ()=>show(t.dataset.page));
-function camStream(on){
-  if (on){ cam.src = "/api/camera.mjpg?t=" + TOKEN; cam.style.display = "block"; }
-  else { cam.removeAttribute("src"); cam.style.display = "none"; }
-}
 // --- the wire --------------------------------------------------------------
 const events = new EventSource("/api/events?t="+TOKEN);
 events.onmessage = (m)=>{ const e = JSON.parse(m.data);
@@ -522,10 +573,6 @@ events.onmessage = (m)=>{ const e = JSON.parse(m.data);
   else if (e.type === "telemetry") instruments(e);
   else if (e.type === "state") setState(e.state);
   else if (e.type === "gate") gateCard(e);
-  else if (e.type === "gesture"){
-    const chip = document.querySelector('.sign[data-sign="' + e.name + '"]');
-    if (chip){ chip.classList.add("seen");
-               setTimeout(()=>chip.classList.remove("seen"), 1600); } }
   else if (e.type === "gate_done"){ const c = document.getElementById("g"+e.id); if(c) c.remove(); } };
 document.getElementById("bell").onclick = ()=>post("/api/bell");
 const HOLD = __HOLD_KEYS__;
@@ -533,30 +580,30 @@ const GLOBAL_KEYS = __GLOBAL_KEYS__;
 function typingNow(){ const el = document.activeElement;
   return el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"); }
 if (!GLOBAL_KEYS) {
-  const held = new Set(); let latched = false;
+  // "armed" gates the toggle to the rising edge of both keys going down
+  // together, and won't re-arm until both are fully released — otherwise a
+  // finger shifting mid-hold (one key lifts and re-lands while the other
+  // stays down) re-fires allHeld() and silently toggles listening back off.
+  const held = new Set(); let latched = false, armed = true;
   const allHeld = ()=> HOLD.every(k => held.has(k));
   addEventListener("keydown",(e)=>{ if(e.repeat || typingNow()) return;
     const k = e.key.toLowerCase(); if(!HOLD.includes(k)) return;
     held.add(k);
-    if(allHeld()){ latched = !latched; post("/api/listen",{on:latched}); }
+    if(armed && allHeld()){ latched = !latched; post("/api/listen",{on:latched}); armed = false; }
   });
   addEventListener("keyup",(e)=>{ const k = e.key.toLowerCase();
-    if(HOLD.includes(k)) held.delete(k); });
+    if(!HOLD.includes(k)) return;
+    held.delete(k);
+    if(held.size === 0) armed = true;
+  });
 }
 document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>post("/api/command",{name:b.dataset.cmd}));
-document.getElementById("gestures").onchange = (e)=>{
-  post("/api/gestures",{enable:e.target.checked});
-  if (e.target.checked){ show("video");
-    setTimeout(()=>{ if (page === "video") camStream(true); }, 1200); }
-  else camStream(false);
-};
 document.getElementById("cog").onclick = ()=>{ location.href = "/settings?t="+TOKEN; };
 document.getElementById("attuneBtn").onclick = (e)=>{
   e.target.disabled = true; e.target.textContent = "attuning…";
   post("/api/attune").finally(()=>setTimeout(()=>{
     document.getElementById("attune").classList.add("known"); }, 1500));
 };
-show("voice");
 </script></body></html>"""
 
 
