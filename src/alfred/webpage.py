@@ -36,13 +36,13 @@ FAVICON = ("data:image/svg+xml;utf8,"
 
 _PALETTE = """
  :root {
-   --vio:#a06bff; --vio-soft:#c9a4ff; --vio-dim:#6a4aa8;
-   --blu:#3fd0ff; --blu-dim:#2b7f9e;
+   --vio:#8f7bff; --vio-soft:#b9c4ff; --vio-dim:#5c6b93;
+   --blu:#4fd6ff; --blu-dim:#2b7f9e;
    --gold:#ffc65c; --gold-dim:#8a6a2a;
    --red:#ff5a6e;
-   --ink:#05060f; --panel:rgba(10,8,22,.86);
-   --vio-glow:rgba(160,107,255,.45); --blu-glow:rgba(63,208,255,.40);
-   --line:rgba(160,107,255,.22);
+   --ink:#04070e; --panel:rgba(8,13,24,.86);
+   --vio-glow:rgba(143,123,255,.35); --blu-glow:rgba(79,214,255,.42);
+   --line:rgba(79,214,255,.18);
  }
 """
 
@@ -54,16 +54,16 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
 __PALETTE__
  * { box-sizing:border-box; margin:0; }
  body { background:
-        radial-gradient(1100px 620px at 18% -12%, #2a1350 0%, transparent 62%),
-        radial-gradient(900px 560px at 88% 6%, #06304a 0%, transparent 58%),
+        radial-gradient(1100px 620px at 18% -12%, #16183a 0%, transparent 60%),
+        radial-gradient(950px 580px at 86% 4%, #06304a 0%, transparent 60%),
         var(--ink);
         color:var(--blu); font:14px Consolas, 'Cascadia Mono', monospace;
         min-height:100vh; display:flex; align-items:center; justify-content:center;
         padding:1.6rem 1.2rem; }
  body::after { content:""; position:fixed; inset:0; pointer-events:none;
         background:
-        linear-gradient(rgba(160,107,255,.045) 1px, transparent 1px) 0 0/100% 46px,
-        linear-gradient(90deg, rgba(63,208,255,.035) 1px, transparent 1px) 0 0/46px 100%; }
+        linear-gradient(rgba(79,214,255,.035) 1px, transparent 1px) 0 0/100% 46px,
+        linear-gradient(90deg, rgba(79,214,255,.028) 1px, transparent 1px) 0 0/46px 100%; }
 
  /* --- three columns: cards, the voice, cards --------------------------- */
  #room { display:flex; gap:1.5rem; align-items:stretch;
@@ -75,7 +75,7 @@ __PALETTE__
         border:1px solid var(--line); background:var(--panel);
         box-shadow:0 0 26px rgba(160,107,255,.07); }
  .card::before { content:""; position:absolute; left:0; top:0; width:2px; height:100%;
-        background:linear-gradient(180deg, var(--vio), transparent); }
+        background:linear-gradient(180deg, var(--blu), transparent); }
  .card .name { font-size:.55rem; letter-spacing:.24em; text-transform:uppercase;
         color:var(--vio-dim); }
  .card .value { font-size:1.28rem; letter-spacing:.02em; color:var(--blu);
@@ -103,13 +103,11 @@ __PALETTE__
  .rows b.live { color:var(--gold); text-shadow:0 0 8px rgba(255,198,92,.5); }
 
  /* --- the stage: the voice, and nothing that isn't the voice ----------- */
- #stage { flex:1; min-width:0; position:relative; padding:1.4rem 1.6rem 1.2rem;
-        border:1px solid var(--line); background:var(--panel);
-        display:flex; flex-direction:column;
-        box-shadow:0 0 60px rgba(160,107,255,.10),
-                   inset 0 0 70px rgba(63,208,255,.035); }
- .corner { position:absolute; width:20px; height:20px; border:2px solid var(--vio);
-        filter:drop-shadow(0 0 5px var(--vio-glow)); }
+ /* the voice floats: no frame, no panel — just the sound and the words */
+ #stage { flex:1; min-width:0; position:relative; padding:.4rem .6rem 1rem;
+        display:flex; flex-direction:column; }
+ .corner { position:absolute; width:20px; height:20px; border:2px solid var(--blu);
+        filter:drop-shadow(0 0 5px var(--blu-glow)); }
  .tl { top:-2px; left:-2px; border-right:0; border-bottom:0; }
  .tr { top:-2px; right:-2px; border-left:0; border-bottom:0; }
  .bl { bottom:-2px; left:-2px; border-right:0; border-top:0; }
@@ -117,9 +115,9 @@ __PALETTE__
 
  header { display:flex; align-items:center; gap:.9rem; }
  #reactor { width:44px; height:44px; border-radius:50%; position:relative; flex:none;
-        background:radial-gradient(circle, #fff 0%, #dcc6ff 14%, var(--vio) 42%,
-                   rgba(40,16,80,.92) 72%);
-        box-shadow:0 0 16px var(--vio-glow), 0 0 46px rgba(160,107,255,.28),
+        background:radial-gradient(circle, #fff 0%, #cfe9ff 14%, var(--blu) 42%,
+                   rgba(8,44,66,.92) 72%);
+        box-shadow:0 0 16px var(--blu-glow), 0 0 44px rgba(79,214,255,.24),
                    inset 0 0 12px rgba(255,255,255,.65);
         animation:pulse 2.6s ease-in-out infinite; }
  #reactor::before { content:""; position:absolute; inset:-6px; border-radius:50%;
@@ -163,7 +161,9 @@ __PALETTE__
     something to say, rather than dozens of animated boxes */
  #wave { display:block; width:100%; height:230px; }
  #sub { min-height:3rem; text-align:center; font-size:1.4rem; line-height:1.45;
-      color:#f0f8ff; text-shadow:0 0 18px var(--blu-glow); padding:0 1rem; }
+      color:#f0f8ff; text-shadow:0 0 18px var(--blu-glow); padding:0 1rem;
+      transition:opacity .3s; }
+ #sub:empty::after { content:"—"; opacity:.18; }
  #hint2 { text-align:center; font-size:.6rem; letter-spacing:.24em;
       text-transform:uppercase; color:var(--vio-dim); margin-top:.5rem; }
 
@@ -193,8 +193,9 @@ __PALETTE__
  .sign.seen { color:var(--gold); border-color:var(--gold); transform:translateY(-2px);
       box-shadow:0 0 18px rgba(255,198,92,.45); }
 
- #bar { display:flex; gap:.5rem; align-items:center; margin-top:auto;
+ #bar { display:flex; gap:.6rem; align-items:center; margin-top:auto;
       padding-top:.9rem; flex-wrap:wrap; }
+ #bell { font-size:.72rem; padding:.6rem 1.4rem; }
  button { background:transparent; color:var(--blu); font:inherit; cursor:pointer;
       border:1px solid rgba(160,107,255,.45); padding:.55rem .85rem;
       letter-spacing:.12em; text-transform:uppercase; font-size:.68rem;
@@ -242,8 +243,6 @@ __PALETTE__
  </div>
 
  <main id="stage">
-  <span class="corner tl"></span><span class="corner tr"></span>
-  <span class="corner bl"></span><span class="corner br"></span>
   <header>
    <div id="reactor"></div>
    <div>
@@ -278,11 +277,8 @@ __PALETTE__
   </div>
 
   <div id="bar">
-   <button id="mic" title="push-to-talk, 5 seconds">◉ mic</button>
-   <button id="bell" title="the bell — abort everything">◼ stop</button>
-   <button data-cmd="undo">undo</button>
-   <button data-cmd="privacy" title="everything I know about you">privacy</button>
-   <label title="webcam reads hand gestures on demand; every gesture is confirmed">
+   <button id="bell" title="stop everything Alfred is doing">◼ stop</button>
+   <label id="camtoggle" title="webcam reads hand gestures on demand; every gesture is confirmed">
     <input type="checkbox" id="gestures"> &#128400; camera</label>
    <button id="cog" style="margin-left:auto" title="settings">&#9881;</button>
   </div>
@@ -344,8 +340,8 @@ function fit(){ const r = wave.getBoundingClientRect(), d = devicePixelRatio || 
   wave.width = Math.max(1, r.width * d); wave.height = Math.max(1, r.height * d);
   ctx.setTransform(d, 0, 0, d, 0, 0); }
 addEventListener("resize", fit);
-const PALETTE = { idle:["#6a4aa8","#2b7f9e"], listening:["#ffc65c","#ff9a5c"],
-                  speaking:["#3fd0ff","#a06bff"] };
+const PALETTE = { idle:["#5c6b93","#2b7f9e"], listening:["#ffc65c","#ff9a5c"],
+                  speaking:["#4fd6ff","#8f7bff"] };
 function draw(){
   const w = wave.clientWidth, h = wave.clientHeight, mid = h / 2;
   ctx.clearRect(0, 0, w, h);
@@ -391,6 +387,7 @@ function setState(s){
   mode = (s === "listening" || s === "speaking") ? s : "idle";
   target = mode === "idle" ? 0.10 : 1.0;
   if (s === "listening") sub.textContent = "Listening…";
+  else if (s === "idle" && sub.textContent === "Listening…") sub.textContent = "";
 }
 // --- the cards -------------------------------------------------------------
 function card(id, percent, noteId, noteText){
@@ -464,6 +461,7 @@ function show(name){
   who.style.display = voice ? "flex" : "none";
   screen.style.display = voice ? "none" : "flex";
   signs.style.display = voice ? "none" : "flex";
+  document.getElementById("camtoggle").style.display = voice ? "none" : "flex";
   if (voice){ camStream(false); startDrawing(); } else { stopDrawing(); }
 }
 document.querySelectorAll(".tab").forEach(t => t.onclick = ()=>show(t.dataset.page));
@@ -484,7 +482,6 @@ events.onmessage = (m)=>{ const e = JSON.parse(m.data);
     if (chip){ chip.classList.add("seen");
                setTimeout(()=>chip.classList.remove("seen"), 1600); } }
   else if (e.type === "gate_done"){ const c = document.getElementById("g"+e.id); if(c) c.remove(); } };
-document.getElementById("mic").onclick = ()=>post("/api/voice");
 document.getElementById("bell").onclick = ()=>post("/api/bell");
 const HOLD = __HOLD_KEYS__;
 const GLOBAL_KEYS = __GLOBAL_KEYS__;
@@ -526,8 +523,8 @@ SETTINGS_PAGE = """<!doctype html><html><head><meta charset="utf-8">
 __PALETTE__
  * { box-sizing:border-box; margin:0; }
  body { background:
-        radial-gradient(1100px 620px at 18% -12%, #2a1350 0%, transparent 62%),
-        radial-gradient(900px 560px at 88% 6%, #06304a 0%, transparent 58%),
+        radial-gradient(1100px 620px at 18% -12%, #16183a 0%, transparent 60%),
+        radial-gradient(950px 580px at 86% 4%, #06304a 0%, transparent 60%),
         var(--ink); color:var(--blu);
         font:14px Consolas, 'Cascadia Mono', monospace;
         min-height:100vh; display:flex; justify-content:center; padding:2rem 1rem; }
@@ -536,15 +533,15 @@ __PALETTE__
         transparent 1px 3px); opacity:.55; }
  body::after { content:""; position:fixed; inset:0; pointer-events:none;
         background:
-        linear-gradient(rgba(160,107,255,.045) 1px, transparent 1px) 0 0/100% 46px,
-        linear-gradient(90deg, rgba(63,208,255,.035) 1px, transparent 1px) 0 0/46px 100%; }
+        linear-gradient(rgba(79,214,255,.035) 1px, transparent 1px) 0 0/100% 46px,
+        linear-gradient(90deg, rgba(79,214,255,.028) 1px, transparent 1px) 0 0/46px 100%; }
  #frame { width:min(760px,100%); position:relative; align-self:flex-start;
         border:1px solid var(--line); background:var(--panel);
         padding:1.6rem;
         box-shadow:0 0 60px rgba(160,107,255,.10),
                    inset 0 0 70px rgba(63,208,255,.035); }
- .corner { position:absolute; width:20px; height:20px; border:2px solid var(--vio);
-        filter:drop-shadow(0 0 5px var(--vio-glow)); }
+ .corner { position:absolute; width:20px; height:20px; border:2px solid var(--blu);
+        filter:drop-shadow(0 0 5px var(--blu-glow)); }
  .tl { top:-2px; left:-2px; border-right:0; border-bottom:0; }
  .tr { top:-2px; right:-2px; border-left:0; border-bottom:0; }
  .bl { bottom:-2px; left:-2px; border-right:0; border-top:0; }

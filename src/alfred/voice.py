@@ -315,6 +315,22 @@ def is_mute(transcript: str) -> bool:
     return "mute" in set(re.sub(r"[^a-z ]", "", transcript.lower()).split())
 
 
+def is_shutdown(transcript: str) -> bool:
+    """'shutdown' / 'stand down' — put down everything he is doing at once.
+
+    This closes ALFRED's own work: the running plan, the conversation, the
+    microphone, the camera. It does not touch the master's machine — that
+    remains off the menu, whatever the word sounds like.
+    """
+    words = re.sub(r"[^a-z ]", " ", transcript.lower()).split()
+    if not words or len(words) > 4:
+        return False
+    joined = " ".join(words)
+    return any(phrase in joined for phrase in
+               ("shutdown", "shut down", "stand down", "stand everything down",
+                "close everything", "power down"))
+
+
 def is_undo(transcript: str) -> bool:
     """'undo' / 'undo that' / 'undo the last one' — revert the last command."""
     words = re.sub(r"[^a-z ]", "", transcript.lower()).split()
