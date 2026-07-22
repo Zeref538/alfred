@@ -62,7 +62,7 @@ __PALETTE__
         padding:2rem 1rem; }
  body::before { content:""; position:fixed; inset:0; pointer-events:none; z-index:2;
         background:repeating-linear-gradient(0deg, rgba(255,255,255,.022) 0 1px,
-        transparent 1px 3px); mix-blend-mode:overlay; }
+        transparent 1px 3px); opacity:.55; }
  body::after { content:""; position:fixed; inset:0; pointer-events:none;
         background:
         linear-gradient(rgba(160,107,255,.045) 1px, transparent 1px) 0 0/100% 46px,
@@ -89,11 +89,12 @@ __PALETTE__
         margin-top:.3rem; text-transform:none; }
  .track { height:7px; background:rgba(160,107,255,.10);
         border:1px solid rgba(160,107,255,.16); overflow:hidden; position:relative; }
- .fill { height:100%; width:0%;
+ .fill { height:100%; width:100%;
+        transform:scaleX(0); transform-origin:left;
         background:linear-gradient(90deg, var(--vio), var(--blu));
         box-shadow:0 0 12px var(--blu-glow);
-        transition:width .8s cubic-bezier(.22,1,.36,1), background .4s; }
- .fill::after { content:""; position:absolute; inset:0;
+        transition:transform .8s cubic-bezier(.22,1,.36,1), background .4s; }
+ .gauge.warm .fill::after, .gauge.hot .fill::after { content:""; position:absolute; inset:0;
         background:linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
         animation:shine 2.6s linear infinite; }
  @keyframes shine { 0% { transform:translateX(-100%) } 100% { transform:translateX(100%) } }
@@ -111,15 +112,15 @@ __PALETTE__
  .stat b.live { color:var(--gold); text-shadow:0 0 8px rgba(255,198,92,.5); }
  #spark { display:flex; align-items:flex-end; gap:2px; height:34px; margin-top:.2rem;
         border-bottom:1px solid var(--line); }
- #spark i { flex:1; background:linear-gradient(180deg, var(--blu), var(--vio));
-        min-height:1px; opacity:.75; transition:height .5s ease; }
+ #spark i { flex:1; height:100%; background:linear-gradient(180deg, var(--blu), var(--vio));
+        opacity:.75; transform:scaleY(.02); transform-origin:bottom;
+        transition:transform .5s ease; }
  @media (max-width:1080px) { #stagerow { flex-wrap:wrap; }
         .rail { width:calc(50% - .75rem); order:2; }
         #deck { order:1; flex:1 0 100%; } }
 
  #frame { width:min(1180px,100%); position:relative; padding:1.5rem 1.6rem 1.3rem;
         border:1px solid var(--line); background:var(--panel);
-        backdrop-filter:blur(3px);
         box-shadow:0 0 60px rgba(160,107,255,.10),
                    inset 0 0 70px rgba(63,208,255,.035); }
  #frame::before { content:""; position:absolute; inset:0; pointer-events:none;
@@ -284,17 +285,17 @@ __PALETTE__
  #stage { height:330px; display:flex; flex-direction:column;
       align-items:center; justify-content:center; gap:1.6rem; }
  #bigviz { display:flex; align-items:center; gap:5px; height:150px; }
- #bigviz i { width:6px; border-radius:4px;
+ #bigviz i { width:6px; height:150px; border-radius:4px;
       background:linear-gradient(180deg, var(--blu), var(--vio));
-      opacity:.45; transition:opacity .3s;
-      height:calc(var(--env) * 26px + 6px); }
+      opacity:.45; transition:opacity .3s; transform-origin:center;
+      transform:scaleY(calc(var(--env) * .10 + .03)); }
  #stage.listening #bigviz i, #stage.speaking #bigviz i { opacity:1;
       animation:breathe var(--beat) ease-in-out infinite; }
  #stage.listening #bigviz i { background:linear-gradient(180deg, #ffe2ac, var(--gold)); }
  #stage.speaking #bigviz i { background:linear-gradient(180deg, #bfefff, var(--blu)); }
  /* the envelope makes it a spindle — tall at the middle, tapering to nothing */
- @keyframes breathe { 0%,100% { height:calc(var(--env) * 14px + 6px) }
-                      50% { height:calc(var(--env) * 132px + 8px) } }
+ @keyframes breathe { 0%,100% { transform:scaleY(calc(var(--env) * .09 + .03)) }
+                      50% { transform:scaleY(calc(var(--env) * .88 + .05)) } }
  #bigsub { min-height:2.6rem; max-width:78%; text-align:center; font-size:1.35rem;
       color:#f0f8ff; text-shadow:0 0 18px var(--blu-glow); line-height:1.45;
       letter-spacing:.01em; }
@@ -546,7 +547,7 @@ function gauge(id, percent, caption){
   const box = document.getElementById(id);
   if (!box) return;
   const shown = Math.max(0, Math.min(100, percent || 0));
-  box.querySelector(".fill").style.width = shown + "%";
+  box.querySelector(".fill").style.transform = "scaleX(" + (shown / 100) + ")";
   box.querySelector("b").textContent = shown.toFixed(0) + "%";
   box.classList.toggle("warm", shown >= 65 && shown < 85);
   box.classList.toggle("hot", shown >= 85);
@@ -557,8 +558,9 @@ for (let i = 0; i < 30; i++) spark.append(document.createElement("i"));
 function pushSpark(percent){
   const bars = spark.querySelectorAll("i");
   for (let i = 0; i < bars.length - 1; i++)
-    bars[i].style.height = bars[i + 1].style.height || "1px";
-  bars[bars.length - 1].style.height = Math.max(1, percent) + "%";
+    bars[i].style.transform = bars[i + 1].style.transform || "scaleY(.02)";
+  bars[bars.length - 1].style.transform =
+    "scaleY(" + Math.max(0.02, percent / 100) + ")";
 }
 function put(id, value, tone){
   const el = document.getElementById(id);
@@ -677,13 +679,14 @@ document.getElementById("attuneBtn").onclick = (e)=>{
 # the voice visualiser and its animation, shared shape with the reactor states
 _VIZ_CSS = """
  #viz { display:flex; align-items:flex-end; gap:3px; height:26px; }
- #viz i { width:3px; height:5px; background:var(--vio-dim); border-radius:2px; }
+ #viz i { width:3px; height:24px; background:var(--vio-dim); border-radius:2px;
+        transform:scaleY(.2); transform-origin:bottom; }
  #viz.listening i { background:var(--gold); animation:bounce .8s ease-in-out infinite; }
  #viz.speaking i { background:var(--blu); animation:bounce .5s ease-in-out infinite; }
  #viz i:nth-child(2){ animation-delay:.10s } #viz i:nth-child(3){ animation-delay:.22s }
  #viz i:nth-child(4){ animation-delay:.32s } #viz i:nth-child(5){ animation-delay:.16s }
  #viz i:nth-child(6){ animation-delay:.26s } #viz i:nth-child(7){ animation-delay:.06s }
- @keyframes bounce { 0%,100%{ height:5px } 50%{ height:24px } }
+ @keyframes bounce { 0%,100%{ transform:scaleY(.2) } 50%{ transform:scaleY(1) } }
 """
 
 SETTINGS_PAGE = """<!doctype html><html><head><meta charset="utf-8">
@@ -701,14 +704,14 @@ __PALETTE__
         min-height:100vh; display:flex; justify-content:center; padding:2rem 1rem; }
  body::before { content:""; position:fixed; inset:0; pointer-events:none; z-index:2;
         background:repeating-linear-gradient(0deg, rgba(255,255,255,.022) 0 1px,
-        transparent 1px 3px); mix-blend-mode:overlay; }
+        transparent 1px 3px); opacity:.55; }
  body::after { content:""; position:fixed; inset:0; pointer-events:none;
         background:
         linear-gradient(rgba(160,107,255,.045) 1px, transparent 1px) 0 0/100% 46px,
         linear-gradient(90deg, rgba(63,208,255,.035) 1px, transparent 1px) 0 0/46px 100%; }
  #frame { width:min(760px,100%); position:relative; align-self:flex-start;
         border:1px solid var(--line); background:var(--panel);
-        backdrop-filter:blur(3px); padding:1.6rem;
+        padding:1.6rem;
         box-shadow:0 0 60px rgba(160,107,255,.10),
                    inset 0 0 70px rgba(63,208,255,.035); }
  .corner { position:absolute; width:20px; height:20px; border:2px solid var(--vio);
