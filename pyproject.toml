@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "alfred"
 version = "0.1.0"
 description = "A proper butler for your PC — local agentic assistant with a deterministic safety gate"
-license = "MIT"
+license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.12",
