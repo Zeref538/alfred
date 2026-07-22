@@ -334,6 +334,10 @@ class Session:
         try:
             if self._maybe_clearance(utterance, spoken):
                 return
+            from . import voice
+            if voice.is_system_check(utterance):
+                self.command("doctor")
+                return
             self.emit(type="state", state="working")
             self._execute(self._plan_for(utterance), utterance, self.etiquette(), spoken)
         except Refusal as refusal:
@@ -534,9 +538,20 @@ class Session:
             fieldlog.record(outcome="shutdown", raw=raw, corrected=transcript)
             return True
         if voice.is_thanks(transcript):
-            self.say("Very good, sir.")
-            self._speak(voice.nod())
-            fieldlog.record(outcome="thanks", raw=raw, corrected=transcript)
+            remainder = voice.strip_thanks(transcript)
+            if not remainder:
+                self.say("Very good, sir.")
+                self._speak(voice.nod())
+                fieldlog.record(outcome="thanks", raw=raw, corrected=transcript)
+                return True
+            # a command spoken right before the sign-off ("system check,
+            # thank you") shouldn't be discarded just because it ends
+            # politely — run it, then close same as a bare "thank you" would
+            transcript = remainder
+            self._conversing = False
+        if voice.is_system_check(transcript):
+            self.command("doctor")
+            fieldlog.record(outcome="doctor", raw=raw, corrected=transcript)
             return True
         # the bell always works; everything past here needs a hearing we trust
         if not voice.is_confident(logprob, no_speech):

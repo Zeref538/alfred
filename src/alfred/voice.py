@@ -254,6 +254,26 @@ def is_thanks(transcript: str) -> bool:
                for phrase in _THANKS)
 
 
+def strip_thanks(transcript: str) -> str:
+    """The command spoken before a trailing sign-off, if any.
+
+    "system check, thank you" is a command that happens to end politely, not
+    an empty pleasantry — is_thanks() alone can't tell those apart from a
+    bare "thank you sir", so callers that want to still act on the order
+    should check this instead of discarding the whole utterance.
+    """
+    text = re.sub(r"['’]", "", transcript.lower())
+    text = " ".join(re.sub(r"[^a-z ]", " ", text).split())
+    text = re.sub(r"(?:\s+(?:alfr\w*|unfr\w*|elfr\w*|please|sir|now|then))+$",
+                  "", text).strip()
+    for phrase in _THANKS:
+        if text == phrase:
+            return ""
+        if text.endswith(" " + phrase):
+            return text[: -len(phrase) - 1].strip()
+    return transcript
+
+
 class Recorder:
     """Hold-to-talk: open the mic on key-down, close it on key-up, keep the
     frames in between. Used by the HUD's push-to-talk keys."""
@@ -337,6 +357,21 @@ def is_undo(transcript: str) -> bool:
     """'undo' / 'undo that' / 'undo the last one' — revert the last command."""
     words = re.sub(r"[^a-z ]", "", transcript.lower()).split()
     return "undo" in words and len(words) <= 4
+
+
+_SYSTEM_CHECK = ("system check", "check system", "run a system check",
+                  "run system check", "check the system", "how are you doing",
+                  "how is the system", "check your vitals", "run diagnostics",
+                  "run a diagnostic", "check vitals")
+
+
+def is_system_check(transcript: str) -> bool:
+    """'system check' — CPU/GPU/disk/memory and the rest of `alfred doctor`,
+    same as the HUD's chip. Short and fixed, like the other meta-commands
+    above, so it's answered directly rather than sent through the planner,
+    which has no matching action in the service menu."""
+    text = " ".join(re.sub(r"[^a-z ]", " ", transcript.lower()).split())
+    return text in _SYSTEM_CHECK
 
 
 def is_yes(transcript: str) -> bool:
