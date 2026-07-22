@@ -1,0 +1,487 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALFRED — demo</title>
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><polygon points='32,3 58,17 58,47 32,61 6,47 6,17' fill='none' stroke='%23a06bff' stroke-width='4'/><path d='M32 32 L18 23 L18 41 Z' fill='%233fd0ff'/><path d='M32 32 L46 23 L46 41 Z' fill='%23a06bff'/><circle cx='32' cy='32' r='4' fill='%23f2eaff'/></svg>">
+<style>
+ :root {
+   --vio:#8f7bff; --vio-soft:#b9c4ff; --vio-dim:#5c6b93;
+   --blu:#4fd6ff; --blu-dim:#2b7f9e;
+   --gold:#ffc65c; --gold-dim:#8a6a2a;
+   --red:#ff5a6e;
+   --ink:#04070e; --panel:rgba(8,13,24,.86);
+   --vio-glow:rgba(143,123,255,.35); --blu-glow:rgba(79,214,255,.42);
+   --line:rgba(79,214,255,.18);
+ }
+ * { box-sizing:border-box; margin:0; }
+ body { background:
+        radial-gradient(1100px 620px at 18% -12%, #16183a 0%, transparent 60%),
+        radial-gradient(950px 580px at 86% 4%, #06304a 0%, transparent 60%),
+        var(--ink);
+        color:var(--blu); font:14px Consolas, 'Cascadia Mono', monospace;
+        min-height:100vh; display:flex; flex-direction:column; align-items:center;
+        padding:1.4rem 1.2rem; }
+ body::after { content:""; position:fixed; inset:0; pointer-events:none;
+        background:
+        linear-gradient(rgba(79,214,255,.035) 1px, transparent 1px) 0 0/100% 46px,
+        linear-gradient(90deg, rgba(79,214,255,.028) 1px, transparent 1px) 0 0/46px 100%; }
+
+ #banner { max-width:760px; width:100%; margin:0 auto 1rem; text-align:center;
+        font-size:.68rem; letter-spacing:.08em; color:var(--gold);
+        border:1px solid rgba(255,198,92,.35); background:rgba(255,198,92,.06);
+        padding:.55rem .8rem; }
+ #banner a { color:var(--blu); }
+
+ #room { display:flex; gap:2rem; align-items:stretch;
+        width:100%; justify-content:space-between; }
+ .side { width:250px; flex:none; display:flex; flex-direction:column; gap:.8rem;
+        justify-content:center; }
+
+ .card { position:relative; padding:.9rem 1rem;
+        border:1px solid var(--line); background:var(--panel);
+        box-shadow:0 0 26px rgba(160,107,255,.07); }
+ .card::before { content:""; position:absolute; left:0; top:0; width:2px; height:100%;
+        background:linear-gradient(180deg, var(--blu), transparent); }
+ .card .name { font-size:.68rem; letter-spacing:.22em; text-transform:uppercase;
+        color:var(--vio-dim); }
+ .card .value { font-size:1.75rem; letter-spacing:.02em; color:var(--blu);
+        font-variant-numeric:tabular-nums; margin:.2rem 0 .3rem;
+        text-shadow:0 0 12px var(--blu-glow); transition:color .3s; }
+ .card .note { font-size:.68rem; letter-spacing:.06em; color:var(--vio-dim); }
+ .track { height:7px; background:rgba(160,107,255,.10);
+        border:1px solid rgba(160,107,255,.16); overflow:hidden; position:relative; }
+ .fill { height:100%; width:100%; transform:scaleX(0); transform-origin:left;
+        background:linear-gradient(90deg, var(--vio), var(--blu));
+        box-shadow:0 0 12px var(--blu-glow);
+        transition:transform .8s cubic-bezier(.22,1,.36,1), background .4s; }
+ .card.warm .fill { background:linear-gradient(90deg, var(--gold), #ff9a5c); }
+ .card.warm .value { color:var(--gold); text-shadow:0 0 12px rgba(255,198,92,.5); }
+ .rows { display:flex; flex-direction:column; gap:.42rem; margin-top:.3rem; }
+ .rows div { display:flex; justify-content:space-between; gap:.5rem;
+        font-size:.7rem; letter-spacing:.1em; text-transform:uppercase;
+        color:var(--vio-dim); }
+ .rows b { color:var(--blu); text-transform:none; letter-spacing:.02em;
+        font-size:.86rem; text-align:right; }
+ .rows b.off { color:var(--vio-dim); }
+ .rows b.live { color:var(--gold); text-shadow:0 0 8px rgba(255,198,92,.5); }
+
+ #stage { flex:1; min-width:0; position:relative; padding:.4rem .6rem 1rem;
+        display:flex; flex-direction:column; }
+
+ header { display:flex; width:100%; align-items:center; gap:.9rem; justify-content:center;
+      margin-bottom:2.4rem; }
+ #reactor { width:44px; height:44px; border-radius:50%; position:relative; flex:none;
+        background:radial-gradient(circle, #fff 0%, #cfe9ff 14%, var(--blu) 42%,
+                   rgba(8,44,66,.92) 72%);
+        box-shadow:0 0 16px var(--blu-glow), 0 0 44px rgba(79,214,255,.24),
+                   inset 0 0 12px rgba(255,255,255,.65);
+        animation:pulse 2.6s ease-in-out infinite; }
+ #reactor::before { content:""; position:absolute; inset:-6px; border-radius:50%;
+        border:1px dashed rgba(63,208,255,.55); animation:spin 13s linear infinite; }
+ #reactor.working { animation:pulse .7s ease-in-out infinite; }
+ #reactor.listening { background:radial-gradient(circle, #fff8ea 0%, #ffe2ac 16%,
+        var(--gold) 44%, rgba(70,48,10,.92) 72%);
+        box-shadow:0 0 16px rgba(255,198,92,.55), 0 0 46px rgba(255,198,92,.30); }
+ #reactor.speaking { background:radial-gradient(circle, #eafaff 0%, #a9e9ff 16%,
+        var(--blu) 44%, rgba(8,52,70,.92) 72%);
+        box-shadow:0 0 16px var(--blu-glow), 0 0 46px rgba(63,208,255,.30); }
+ @keyframes pulse { 0%,100% { transform:scale(1) } 50% { transform:scale(1.07) } }
+ @keyframes spin { to { transform:rotate(360deg) } }
+ .crest { width:24px; height:24px; flex:none;
+      filter:drop-shadow(0 0 6px var(--vio-glow)); }
+ .wordmark { display:flex; align-items:center; gap:.5rem; }
+ h1 { font-size:1rem; letter-spacing:.55em; font-weight:600;
+      background:linear-gradient(90deg, var(--vio-soft), var(--blu));
+      -webkit-background-clip:text; background-clip:text; color:transparent; }
+ #status { font-size:.62rem; color:var(--vio-dim); letter-spacing:.22em;
+      margin-top:.25rem; text-transform:uppercase; }
+ #status b { color:var(--blu); }
+ #who { display:flex; justify-content:center; gap:2.4rem; margin-top:1rem;
+      font-size:.6rem; letter-spacing:.3em; text-transform:uppercase; }
+ #who span { color:rgba(160,107,255,.28); transition:color .3s, text-shadow .3s; }
+ #who.listening .me { color:var(--gold); text-shadow:0 0 12px rgba(255,198,92,.6); }
+ #who.speaking .him { color:var(--blu); text-shadow:0 0 12px var(--blu-glow); }
+
+ #wave { display:block; width:100%; height:440px; }
+ #sub { min-height:3rem; text-align:center; font-size:1.4rem; line-height:1.45;
+      color:#f0f8ff; text-shadow:0 0 18px var(--blu-glow); padding:0 1rem;
+      transition:opacity .3s; }
+ #sub:empty::after { content:"—"; opacity:.18; }
+ #hint2 { text-align:center; font-size:.6rem; letter-spacing:.24em;
+      text-transform:uppercase; color:var(--vio-dim); margin-top:.5rem; }
+
+ #ask { display:flex; gap:.5rem; margin-top:.9rem; }
+ #ask input { flex:1; background:#0a0714; border:1px solid var(--line);
+      color:var(--blu); font:inherit; padding:.55rem .7rem; }
+ #ask button { border:1px solid var(--line); background:rgba(79,214,255,.05);
+      color:var(--vio-dim); font:inherit; padding:.55rem 1.1rem; cursor:not-allowed;
+      text-transform:uppercase; letter-spacing:.18em; font-size:.68rem; }
+ #tryBox { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center;
+      margin-top:.6rem; }
+ #tryLabel { font-size:.62rem; letter-spacing:.2em; text-transform:uppercase;
+      color:var(--vio-dim); margin-right:.2rem; }
+ .try { border:1px solid rgba(160,107,255,.22); background:rgba(160,107,255,.05);
+      color:var(--vio-soft); font:inherit; font-size:.68rem; padding:.32rem .65rem;
+      border-radius:10px; cursor:pointer; transition:border-color .2s, box-shadow .2s; }
+ .try:hover { border-color:var(--gold); box-shadow:0 0 14px rgba(255,198,92,.25); }
+
+ #feed { margin-top:.9rem; max-height:150px; overflow-y:auto; font-size:11.5px;
+      line-height:1.65; color:var(--vio-soft); white-space:pre-wrap;
+      scrollbar-color:var(--vio-dim) transparent; padding-right:.3rem; }
+ #feed .me { color:#dff3ff; }
+ #feed .act { color:var(--gold); }
+
+ #bar { display:flex; gap:.9rem; align-items:center; justify-content:center;
+      margin-top:auto; padding-top:1.1rem; flex-wrap:wrap; }
+ #cta { font-size:.86rem; padding:.7rem 1.5rem; color:var(--vio-soft);
+      border:1px solid rgba(160,107,255,.5); text-decoration:none;
+      letter-spacing:.14em; text-transform:uppercase;
+      clip-path:polygon(8px 0, 100% 0, 100% calc(100% - 8px),
+                        calc(100% - 8px) 100%, 0 100%, 0 8px);
+      transition:box-shadow .15s, background .15s, color .15s; }
+ #cta:hover { background:rgba(160,107,255,.10); box-shadow:0 0 16px var(--vio-glow); }
+
+ @media (max-width:1120px) { #room { flex-wrap:wrap; }
+      .side { width:calc(50% - .75rem); order:2; }
+      #stage { order:1; flex:1 0 100%; } }
+</style></head><body>
+
+<div id="banner">This is a scripted walkthrough, not a live connection — Alfred
+ runs locally on Windows and needs real OS access (mic, keyboard, system
+ volume) that a public web page can never have.
+ <a href="https://github.com/Zeref538/alfred">See the real thing on GitHub →</a></div>
+
+<div id="room">
+ <div class="side">
+  <div class="card" id="cCpu"><div class="name">processor</div>
+   <div class="value">—</div><div class="track"><div class="fill"></div></div>
+   <div class="note" id="nCpu">&nbsp;</div></div>
+  <div class="card" id="cGpu"><div class="name">graphics</div>
+   <div class="value">—</div><div class="track"><div class="fill"></div></div>
+   <div class="note">all engines</div></div>
+  <div class="card" id="cRam"><div class="name">memory</div>
+   <div class="value">—</div><div class="track"><div class="fill"></div></div>
+   <div class="note" id="nRam">&nbsp;</div></div>
+  <div class="card" id="cDisk"><div class="name">storage</div>
+   <div class="value">—</div><div class="track"><div class="fill"></div></div>
+   <div class="note" id="nDisk">&nbsp;</div></div>
+ </div>
+
+ <main id="stage">
+  <header>
+   <div id="reactor"></div>
+   <div>
+    <div class="wordmark"><svg class="crest" viewBox="0 0 64 64" aria-hidden="true">
+     <defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="1">
+     <stop offset="0%" stop-color="#c9a4ff"/><stop offset="100%" stop-color="#3fd0ff"/>
+     </linearGradient></defs>
+     <polygon points="32,3 58,17 58,47 32,61 6,47 6,17" fill="none" stroke="url(#cg)" stroke-width="2.5"/>
+     <circle cx="32" cy="32" r="19" fill="none" stroke="url(#cg)" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>
+     <path d="M32 32 L18 23 L18 41 Z" fill="url(#cg)"/>
+     <path d="M32 32 L46 23 L46 41 Z" fill="url(#cg)"/>
+     <circle cx="32" cy="32" r="4" fill="#f2eaff"/></svg><h1>ALFRED</h1></div>
+    <div id="status">systems <b id="state">nominal</b> · the gate is watching</div>
+   </div>
+  </header>
+
+  <div id="who"><span class="me">you</span><span class="him">alfred</span></div>
+  <canvas id="wave"></canvas>
+  <div id="sub">At your service, sir. Click something below to see what he'd do.</div>
+  <div id="hint2">click a "most used" example — nothing runs until you choose one</div>
+
+  <div id="ask">
+   <input id="askInput" placeholder="or type him something, sir…" disabled>
+   <button id="askSend" disabled>ask</button>
+  </div>
+  <div id="tryBox">
+   <span id="tryLabel">most used:</span>
+   <button class="try">open reddit.com</button>
+   <button class="try">search for python tutorials</button>
+   <button class="try">launch calculator</button>
+   <button class="try">set volume to 30</button>
+   <button class="try">system check</button>
+  </div>
+
+  <div id="feed"></div>
+
+  <div id="bar">
+   <a id="cta" href="https://github.com/Zeref538/alfred">★ star it on github</a>
+  </div>
+ </main>
+
+ <div class="side">
+  <div class="card"><div class="name">the butler</div>
+   <div class="rows">
+    <div><span>brain</span><b>qwen3.5:2b (local)</b></div>
+    <div><span>hearing</span><b>whisper small</b></div>
+    <div><span>voice</span><b>piper</b></div>
+    <div><span>pace</span><b>1.0×</b></div>
+   </div></div>
+  <div class="card"><div class="name">the trust gate</div>
+   <div class="rows">
+    <div><span>tier 0</span><b class="off">at liberty</b></div>
+    <div><span>tier 1</span><b class="live">announced</b></div>
+    <div><span>tier 2</span><b class="live">by your leave</b></div>
+   </div></div>
+ </div>
+</div>
+
+<script>
+// ---- the same visualiser Alfred's real HUD uses, verbatim -----------------
+const wave = document.getElementById("wave");
+const ctx = wave.getContext("2d");
+let mode = "idle", energy = 0.10, target = 0.10, phase = 0, raf = null;
+function fit(){ const r = wave.getBoundingClientRect(), d = devicePixelRatio || 1;
+  wave.width = Math.max(1, r.width * d); wave.height = Math.max(1, r.height * d);
+  ctx.setTransform(d, 0, 0, d, 0, 0); }
+addEventListener("resize", fit);
+
+const NODES = 220, NEIGHBOURS = 3;
+const PALETTES = {
+  idle:      ["#8cd6ff", "#5fa8ff", "#a6c8ff", "#7ee6ff", "#bfe9ff"],
+  listening: ["#ffd27a", "#e8a33c", "#ffe2ac", "#ffc266", "#fff0d1"],
+  speaking:  ["#c9a6ff", "#8b5fe8", "#e6d1ff", "#a878ff", "#f0e3ff"],
+};
+const VX = new Float32Array(NODES), VY = new Float32Array(NODES), VZ = new Float32Array(NODES);
+const SFREQ = new Float32Array(NODES), SPHASE = new Float32Array(NODES);
+const GX = new Float32Array(NODES), GY = new Float32Array(NODES), GZ = new Float32Array(NODES);
+function hash(i, j){ const s = Math.sin(i * 12.9898 + j * 78.233) * 43758.5453; return s - Math.floor(s); }
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+for (let i = 0; i < NODES; i++){
+  const y = 1 - (i / (NODES - 1)) * 2, r = Math.sqrt(Math.max(0, 1 - y * y)), a = GOLDEN * i;
+  VX[i] = Math.cos(a) * r; VY[i] = y; VZ[i] = Math.sin(a) * r;
+  const h = hash(i, NODES - i);
+  SFREQ[i] = 0.6 + h * 1.6; SPHASE[i] = h * Math.PI * 2;
+}
+const EDGES = [];
+{
+  const seen = new Set();
+  for (let i = 0; i < NODES; i++){
+    const dists = [];
+    for (let j = 0; j < NODES; j++){
+      if (i === j) continue;
+      const dx = VX[i] - VX[j], dy = VY[i] - VY[j], dz = VZ[i] - VZ[j];
+      dists.push([dx * dx + dy * dy + dz * dz, j]);
+    }
+    dists.sort((p, q) => p[0] - q[0]);
+    for (let k = 0; k < NEIGHBOURS; k++){
+      const j = dists[k][1], key = i < j ? i * NODES + j : j * NODES + i;
+      if (!seen.has(key)){ seen.add(key); EDGES.push(i, j); }
+    }
+  }
+}
+const PERSP = 2.6, TILT = 0.30;
+function drift(t, a, b, c){
+  return Math.sin(t * a) * 0.6 + Math.sin(t * b + 1.7) * 0.3 + Math.sin(t * c + 0.4) * 0.1;
+}
+function projectAll(t, pulseAmp, ry, rz, tilt, base, cx, cy){
+  const cosY = Math.cos(ry), sinY = Math.sin(ry), cosX = Math.cos(tilt), sinX = Math.sin(tilt),
+        cosZ = Math.cos(rz), sinZ = Math.sin(rz);
+  for (let i = 0; i < NODES; i++){
+    const bulge = 1 + Math.sin(t * SFREQ[i] + SPHASE[i]) * pulseAmp;
+    const x = VX[i] * bulge, y = VY[i] * bulge, z = VZ[i] * bulge;
+    const x1 = x * cosY + z * sinY, z1 = -x * sinY + z * cosY;
+    const y1 = y * cosX - z1 * sinX, z2 = y * sinX + z1 * cosX;
+    const x2 = x1 * cosZ - y1 * sinZ, y3 = x1 * sinZ + y1 * cosZ;
+    const scale = PERSP / (PERSP - Math.min(z2, PERSP * 0.75));
+    GX[i] = cx + x2 * base * scale; GY[i] = cy + y3 * base * scale; GZ[i] = z2;
+  }
+}
+const MAX_SHARDS = 70;
+const SHARDS = [];
+for (let n = 0; n < MAX_SHARDS; n++) SHARDS.push({});
+let shardCount = 0;
+function spawnShard(cx, cy, pal){
+  if (shardCount >= MAX_SHARDS) return;
+  const i = Math.floor(Math.random() * NODES);
+  const px = GX[i], py = GY[i];
+  const dx = px - cx, dy = py - cy;
+  const dist = Math.hypot(dx, dy) || 1;
+  const jitter = (Math.random() - 0.5) * 0.6;
+  const speed = 1.0 + Math.random() * 1.8;
+  const s = SHARDS[shardCount++];
+  s.x = px; s.y = py;
+  s.vx = (dx / dist + jitter) * speed; s.vy = (dy / dist - jitter) * speed;
+  s.life = 0; s.maxLife = 24 + Math.random() * 30;
+  s.color = pal[Math.floor(Math.random() * pal.length)];
+  s.len = 3 + Math.random() * 6;
+}
+function drawShards(){
+  ctx.shadowBlur = 0;
+  ctx.globalCompositeOperation = "lighter";
+  for (let k = shardCount - 1; k >= 0; k--){
+    const s = SHARDS[k];
+    s.vx *= 1.03; s.vy *= 1.03;
+    s.x += s.vx; s.y += s.vy; s.life++;
+    if (s.life > s.maxLife){
+      shardCount--;
+      SHARDS[k] = SHARDS[shardCount]; SHARDS[shardCount] = s;
+      continue;
+    }
+    const alpha = 1 - s.life / s.maxLife, back = Math.hypot(s.vx, s.vy) || 1;
+    ctx.strokeStyle = s.color;
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(s.x - (s.vx / back) * s.len, s.y - (s.vy / back) * s.len);
+    ctx.lineTo(s.x, s.y);
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+}
+function draw(){
+  const w = wave.clientWidth, h = wave.clientHeight;
+  const cx = w / 2, cy = h / 2;
+  ctx.clearRect(0, 0, w, h);
+  energy += (target - energy) * 0.07;
+  phase += mode === "idle" ? 0.006 : 0.016;
+  const base = Math.min(w, h) * 0.34 * (1 + energy * 0.05);
+  const ry = phase + drift(phase, 0.17, 0.29, 0.11) * 0.25;
+  const rz = drift(phase, 0.13, 0.23, 0.07) * 0.12;
+  const tilt = TILT + drift(phase, 0.09, 0.19, 0.05) * 0.10;
+  const pulseAmp = 0.035 + energy * 0.05;
+  projectAll(phase, pulseAmp, ry, rz, tilt, base, cx, cy);
+  const pal = PALETTES[mode] || PALETTES.idle;
+  const spawnCount = Math.random() < (0.2 + energy * 0.6) ? 1 + Math.floor(energy * 2) : 0;
+  for (let n = 0; n < spawnCount; n++) spawnShard(cx, cy, pal);
+  drawShards();
+  ctx.lineWidth = 0.7;
+  ctx.strokeStyle = pal[1];
+  for (let band = 0; band < 3; band++){
+    const lo = -1 + band * (2 / 3), hi = lo + 2 / 3;
+    ctx.globalAlpha = (0.12 + band * 0.22) * (0.6 + energy * 0.4);
+    ctx.beginPath();
+    for (let e = 0; e < EDGES.length; e += 2){
+      const i = EDGES[e], j = EDGES[e + 1], mz = (GZ[i] + GZ[j]) / 2;
+      if (mz < lo || mz >= hi) continue;
+      ctx.moveTo(GX[i], GY[i]); ctx.lineTo(GX[j], GY[j]);
+    }
+    ctx.stroke();
+  }
+  ctx.shadowColor = pal[3];
+  ctx.shadowBlur = 6 + energy * 6;
+  ctx.fillStyle = pal[0];
+  for (let i = 0; i < NODES; i++){
+    const depth = (GZ[i] + 1) / 2;
+    const r = 0.9 + depth * 1.6 + energy * 0.6;
+    ctx.globalAlpha = 0.35 + depth * 0.5 + energy * 0.15;
+    ctx.beginPath();
+    ctx.arc(GX[i], GY[i], r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
+  raf = requestAnimationFrame(draw);
+}
+function startDrawing(){ if (!raf){ fit(); raf = requestAnimationFrame(draw); } }
+startDrawing();
+
+// ---- scripted playback: no backend, no real system access -----------------
+const reactor = document.getElementById("reactor"), who = document.getElementById("who");
+const stateEl = document.getElementById("state"), sub = document.getElementById("sub");
+const feed = document.getElementById("feed");
+function setState(s){
+  reactor.className = s === "idle" ? "" : s;
+  stateEl.textContent = s === "idle" ? "nominal" : s;
+  who.className = (s === "listening" || s === "speaking") ? s : "";
+  mode = (s === "listening" || s === "speaking") ? s : "idle";
+  target = mode === "idle" ? 0.10 : 1.0;
+}
+function say(t, me, flash){
+  const line = document.createElement("div");
+  if (me) line.className = "me"; if (flash) line.className = "act";
+  line.textContent = (me ? "› " : "") + t;
+  feed.append(line); feed.scrollTop = feed.scrollHeight;
+  while (feed.childNodes.length > 40) feed.removeChild(feed.firstChild);
+}
+function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+const DONE_REPLIES = ["Very good, sir.", "Consider it done, sir.", "At once, sir."];
+const SCRIPT = [
+  { ask: "open reddit.com",
+    plan: ["open_url(url='https://reddit.com')"],
+    result: "[ok] open_url: done" },
+  { ask: "search for python tutorials",
+    plan: ["web_search(query='python tutorials')"],
+    result: "[ok] web_search: done" },
+  { ask: "launch calculator",
+    plan: ["launch_app(app='calculator')"],
+    result: "[ok] launch_app: done" },
+  { ask: "set volume to 30",
+    plan: ["set_volume(level=30)"],
+    result: "[ok] set_volume: done" },
+  { ask: "system check",
+    doctor: true, reply: "All well, sir." },
+];
+const DOCTOR_LINES = [
+  "OK  running instance: http://127.0.0.1:51789",
+  "OK  cpu: 34% busy", "OK  gpu: 12% busy",
+  "OK  disk: 383/476 GiB used (80.5%)", "OK  memory: 11.2/15.9 GiB used (70%)",
+  "OK  allowed folder exists: C:\\Users\\you\\Documents",
+];
+
+// Alfred's actual voice, not a browser approximation: every line here is
+// rendered once offline with the real local Piper model and shipped as a
+// static file. Browsers still block any audio until a user gesture, so
+// playback (including the boot greeting) is primed on the first
+// click/keypress anywhere on the page.
+const AUDIO = {
+  "Very good, sir.": "audio/done1.wav",
+  "Consider it done, sir.": "audio/done2.wav",
+  "At once, sir.": "audio/done3.wav",
+  "All well, sir.": "audio/allwell.wav",
+};
+const GREETING_TEXT = "Good morning, sir. Alfred is online and at your service.";
+let audioPrimed = false;
+function primeAudio(){
+  if (audioPrimed) return;
+  audioPrimed = true;
+  sub.textContent = "“" + GREETING_TEXT + "”";
+  new Audio("audio/greeting.wav").play().catch(() => {});
+  setTimeout(() => {
+    if (!busy) sub.textContent = "At your service, sir. Click something below to see what he'd do.";
+  }, 4000);
+}
+addEventListener("click", primeAudio, { once: true });
+addEventListener("keydown", primeAudio, { once: true });
+function speak(text){
+  const src = AUDIO[text];
+  if (src) new Audio(src).play().catch(() => {});
+}
+
+// nothing plays until you click a chip — no autoplay loop running the show
+// for you. One turn at a time; a chip click while one is already playing
+// does nothing until it finishes.
+let busy = false;
+async function playTurn(i){
+  if (busy) return;
+  busy = true;
+  const step = SCRIPT[i];
+
+  setState("listening"); sub.textContent = "“" + step.ask + "”";
+  say(step.ask, true);
+  await wait(1400);
+
+  setState("working");
+  await wait(700);
+  if (step.doctor){
+    for (const line of DOCTOR_LINES){ say(line); await wait(160); }
+  } else {
+    say("He would:");
+    for (const p of step.plan) say("  - " + p);
+    await wait(500);
+    say(step.result, false, true);
+  }
+  const reply = step.reply || DONE_REPLIES[Math.floor(Math.random() * DONE_REPLIES.length)];
+  say(reply);
+  setState("speaking"); sub.textContent = "“" + reply + "”";
+  speak(reply);
+  await wait(1100);
+  setState("idle"); sub.textContent = "At your service, sir.";
+  busy = false;
+}
+document.querySelectorAll(".try").forEach((b, i) => {
+  b.onclick = () => { primeAudio(); playTurn(i); };
+});
+</script>
+</body></html>
