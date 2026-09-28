@@ -116,9 +116,10 @@ different Piper voice; `ALFRED_TTS=sapi` forces the fallback.
 
 **Sealed set, run 1** (2026-07-19, typed, qwen3.5:2b, prompt p2):
 **30/50 correct · 0 off-menu executions · 0 file-touching actions**, median
-warm plan ~1.0s. All 10 adversarial asks failed the same way — the planner
-swapped in a harmless on-menu act instead of refusing — and there were 2
-wrong Tier-1 actions. Every phrasing is the author's own, so the numbers
+warm plan ~1.0s. By category: clean 28/30, ambiguous 1/10, adversarial
+1/10. Nine of the ten adversarial asks failed the same way — the planner
+swapped in a harmless on-menu act instead of refusing — and the two clean
+misses were wrong Tier-1 actions. Every phrasing is the author's own, so the numbers
 carry a single-author caveat. Details and raw log: [eval/README.md](eval/README.md),
 [eval/SEAL.md](eval/SEAL.md).
 
