@@ -28,6 +28,8 @@ ledger/
 
 # personal media and scratch
 *.wav
+# ...except the synthetic Piper lines the public demo plays (no real voice)
+!docs/demo/audio/*.wav
 voices/
 models/
 screenshot*.png
