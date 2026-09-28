@@ -7,6 +7,14 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://zeref538.github.io/alfred/demo/">
 <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><polygon points='32,3 58,17 58,47 32,61 6,47 6,17' fill='none' stroke='%23a06bff' stroke-width='4'/><path d='M32 32 L18 23 L18 41 Z' fill='%233fd0ff'/><path d='M32 32 L46 23 L46 41 Z' fill='%23a06bff'/><circle cx='32' cy='32' r='4' fill='%23f2eaff'/></svg>">
+<script>
+// Runs before the page paints, so there is no flash of the wrong theme.
+// A saved choice wins; otherwise follow the system. Same key as the case study.
+(function(){ var t = null;
+  try { t = localStorage.getItem("alfred-theme"); } catch (e) {}
+  if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  document.documentElement.dataset.theme = t; })();
+</script>
 <style>
  :root {
    --vio:#8f7bff; --vio-soft:#b9c4ff; --vio-dim:#5c6b93;
@@ -148,7 +156,61 @@
  @media (max-width:1120px) { #room { flex-wrap:wrap; }
       .side { width:calc(50% - .75rem); order:2; }
       #stage { order:1; flex:1 0 100%; } }
+ #themeBtn { position:fixed; top:.8rem; right:.8rem; z-index:5; width:36px; height:36px;
+      border:1px solid var(--line); background:var(--panel); color:var(--vio-soft);
+      font:16px/1 system-ui, sans-serif; cursor:pointer; }
+ @media (max-width:600px) { #banner { margin-top:2.6rem; } } /* room for the theme button */
+ #themeBtn:focus-visible, .try:focus-visible, #cta:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
+
+ /* ---- light theme: the portfolio's stone palette, square corners ---------- */
+ :root[data-theme="light"] {
+   --vio:#6d28d9; --vio-soft:#6d28d9; --vio-dim:#57534e;
+   --blu:#1c1917; --blu-dim:#57534e;
+   --gold:#92400e; --gold-dim:#57534e; --red:#b91c1c;
+   --ink:#f5f5f4; --panel:#ffffff;
+   --vio-glow:transparent; --blu-glow:transparent;
+   --line:#e7e5e4;
+   color-scheme:light;
+ }
+ [data-theme="light"] body { background:var(--ink); color:#1c1917; }
+ [data-theme="light"] body::after {
+        background:
+        linear-gradient(rgba(28,25,23,.035) 1px, transparent 1px) 0 0/100% 46px,
+        linear-gradient(90deg, rgba(28,25,23,.03) 1px, transparent 1px) 0 0/46px 100%; }
+ [data-theme="light"] #banner { border-color:#e7e5e4; background:#fafaf9; }
+ [data-theme="light"] #banner a { color:#6d28d9; }
+ [data-theme="light"] .card { box-shadow:none; }
+ [data-theme="light"] .card::before { background:#6d28d9; }
+ [data-theme="light"] .track { background:#fafaf9; border-color:#e7e5e4; }
+ [data-theme="light"] .fill { background:#6d28d9; box-shadow:none; }
+ [data-theme="light"] .card.warm .fill { background:#92400e; }
+ [data-theme="light"] .card.warm .value, [data-theme="light"] .rows b.live { text-shadow:none; }
+ [data-theme="light"] #reactor { background:radial-gradient(circle, #fff 0%, #ede9fe 18%, #8b5cf6 48%, #4c1d95 76%);
+        box-shadow:0 0 0 1px #e7e5e4; }
+ [data-theme="light"] #reactor::before { border-color:rgba(109,40,217,.45); }
+ [data-theme="light"] #reactor.listening { background:radial-gradient(circle, #fff 0%, #fef3c7 18%, #d97706 48%, #78350f 76%); box-shadow:none; }
+ [data-theme="light"] #reactor.speaking { background:radial-gradient(circle, #fff 0%, #ede9fe 18%, #7c3aed 48%, #4c1d95 76%); box-shadow:none; }
+ [data-theme="light"] .crest { filter:none; }
+ [data-theme="light"] .crest stop { stop-color:#6d28d9; }
+ [data-theme="light"] h1 { background:none; color:#1c1917; }
+ [data-theme="light"] #status b { color:#6d28d9; }
+ [data-theme="light"] #who span { color:#57534e; }
+ [data-theme="light"] #who.listening .me { color:#92400e; text-shadow:none; }
+ [data-theme="light"] #who.speaking .him { color:#6d28d9; text-shadow:none; }
+ [data-theme="light"] #sub { color:#1c1917; text-shadow:none; }
+ [data-theme="light"] #ask input { background:#ffffff; color:#1c1917; }
+ [data-theme="light"] #ask input::placeholder { color:#57534e; }
+ [data-theme="light"] #ask button { background:#fafaf9; }
+ [data-theme="light"] .try { border:1px solid #e7e5e4; background:#ffffff; color:#1c1917; border-radius:0; }
+ [data-theme="light"] .try:hover { border-color:#6d28d9; box-shadow:none; }
+ [data-theme="light"] #feed { color:#57534e; scrollbar-color:#a8a29e transparent; }
+ [data-theme="light"] #feed .me { color:#1c1917; }
+ [data-theme="light"] #feed .act { color:#92400e; }
+ [data-theme="light"] #cta { background:#6d28d9; color:#ffffff; border-color:#6d28d9; }
+ [data-theme="light"] #cta:hover { background:#5b21b6; box-shadow:none; }
 </style></head><body>
+
+<button id="themeBtn" type="button" aria-label="Switch to light theme">◐</button>
 
 <div id="banner">This is a scripted walkthrough, not a live connection — Alfred
  runs locally on Windows and needs real OS access (mic, keyboard, system
@@ -246,6 +308,12 @@ const PALETTES = {
   listening: ["#ffd27a", "#e8a33c", "#ffe2ac", "#ffc266", "#fff0d1"],
   speaking:  ["#c9a6ff", "#8b5fe8", "#e6d1ff", "#a878ff", "#f0e3ff"],
 };
+const LIGHT_PALETTES = {
+  idle:      ["#6d28d9", "#8b5cf6", "#7c3aed", "#a78bfa", "#5b21b6"],
+  listening: ["#b45309", "#d97706", "#92400e", "#f59e0b", "#78350f"],
+  speaking:  ["#6d28d9", "#7c3aed", "#5b21b6", "#8b5cf6", "#4c1d95"],
+};
+const isLight = () => document.documentElement.dataset.theme === "light";
 const VX = new Float32Array(NODES), VY = new Float32Array(NODES), VZ = new Float32Array(NODES);
 const SFREQ = new Float32Array(NODES), SPHASE = new Float32Array(NODES);
 const GX = new Float32Array(NODES), GY = new Float32Array(NODES), GZ = new Float32Array(NODES);
@@ -312,7 +380,7 @@ function spawnShard(cx, cy, pal){
 }
 function drawShards(){
   ctx.shadowBlur = 0;
-  ctx.globalCompositeOperation = "lighter";
+  ctx.globalCompositeOperation = isLight() ? "source-over" : "lighter";
   for (let k = shardCount - 1; k >= 0; k--){
     const s = SHARDS[k];
     s.vx *= 1.03; s.vy *= 1.03;
@@ -346,7 +414,8 @@ function draw(){
   const tilt = TILT + drift(phase, 0.09, 0.19, 0.05) * 0.10;
   const pulseAmp = 0.035 + energy * 0.05;
   projectAll(phase, pulseAmp, ry, rz, tilt, base, cx, cy);
-  const pal = PALETTES[mode] || PALETTES.idle;
+  const pals = isLight() ? LIGHT_PALETTES : PALETTES;
+  const pal = pals[mode] || pals.idle;
   const spawnCount = Math.random() < (0.2 + energy * 0.6) ? 1 + Math.floor(energy * 2) : 0;
   for (let n = 0; n < spawnCount; n++) spawnShard(cx, cy, pal);
   drawShards();
@@ -380,6 +449,24 @@ function draw(){
 }
 function startDrawing(){ if (!raf){ fit(); raf = requestAnimationFrame(draw); } }
 startDrawing();
+
+// ---- theme toggle --------------------------------------------------------
+const themeBtn = document.getElementById("themeBtn");
+function showTheme(t){
+  document.documentElement.dataset.theme = t;
+  themeBtn.setAttribute("aria-label", t === "light" ? "Switch to dark theme" : "Switch to light theme");
+}
+showTheme(document.documentElement.dataset.theme);
+themeBtn.onclick = () => {
+  const next = isLight() ? "dark" : "light";
+  showTheme(next);
+  try { localStorage.setItem("alfred-theme", next); } catch (e) {}
+};
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", e => {
+  let saved = null;
+  try { saved = localStorage.getItem("alfred-theme"); } catch (err) {}
+  if (!saved) showTheme(e.matches ? "light" : "dark");
+});
 
 // ---- scripted playback: no backend, no real system access -----------------
 const reactor = document.getElementById("reactor"), who = document.getElementById("who");
