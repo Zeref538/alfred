@@ -125,6 +125,7 @@ def test_piper_british_voice_is_intelligible(tmp_path):
 
 @pytest.mark.skipif(os.environ.get("CI") is not None, reason="no model downloads in CI")
 def test_loopback_tts_to_whisper(tmp_path):
+    pytest.importorskip("faster_whisper")  # [voice] extra
     from alfred.voice import speak_to_wav, transcribe
 
     wav = str(tmp_path / "loopback.wav")

@@ -52,8 +52,8 @@ def test_parse_hotkey_rejects_bad_combos(bad):
 
 
 def test_crest_icon_renders_at_every_size(tmp_path):
+    Image = pytest.importorskip("PIL.Image")  # [ui] extra
     from alfred.shortcut import ICON_SIZES, make_icon
-    from PIL import Image
     path = make_icon(tmp_path / "alfred.ico")
     assert path.exists() and path.stat().st_size > 0
     assert sorted(Image.open(path).info["sizes"]) == sorted((s, s) for s in ICON_SIZES)

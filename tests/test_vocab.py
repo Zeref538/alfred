@@ -196,7 +196,10 @@ def test_deterministic_correction_repairs_split_names(vocab_file, monkeypatch):
 
 
 def test_hotwords_are_capped_cleaned_and_deduped(vocab_file, monkeypatch):
-    sites = {f"site {i}": f"https://x{i}.example" for i in range(200)}
+    # letters, not digits: speakable() strips digits, so "site 7" would all
+    # collapse into one "site" and the cap would never be reached
+    names = [f"site {chr(97 + i // 26)}{chr(97 + i % 26)}" for i in range(200)]
+    sites = {name: f"https://x{i}.example" for i, name in enumerate(names)}
     vocab.VOCAB_FILE.write_text(
         "sites:\n" + "".join(f"  {k}: {v}\n" for k, v in sites.items()),
         encoding="utf-8")
