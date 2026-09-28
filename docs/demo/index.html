@@ -1,6 +1,11 @@
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ALFRED — demo</title>
+<meta name="description" content="Click-through demo of Alfred, a local AI butler for Windows: see the plan he'd make, and the consent gate that stops him before anything runs.">
+<meta property="og:title" content="Alfred — a local AI butler with a safety gate">
+<meta property="og:description" content="Click-through demo: every plan passes one deterministic validator and a consent tier before it touches the PC.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://zeref538.github.io/alfred/demo/">
 <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><polygon points='32,3 58,17 58,47 32,61 6,47 6,17' fill='none' stroke='%23a06bff' stroke-width='4'/><path d='M32 32 L18 23 L18 41 Z' fill='%233fd0ff'/><path d='M32 32 L46 23 L46 41 Z' fill='%23a06bff'/><circle cx='32' cy='32' r='4' fill='%23f2eaff'/></svg>">
 <style>
  :root {
@@ -189,7 +194,7 @@
   <div id="hint2">click a "most used" example — nothing runs until you choose one</div>
 
   <div id="ask">
-   <input id="askInput" placeholder="or type him something, sir…" disabled>
+   <input id="askInput" aria-label="Type a command for Alfred (off in the demo)" placeholder="or type him something, sir…" disabled>
    <button id="askSend" disabled>ask</button>
   </div>
   <div id="tryBox">
